@@ -143,14 +143,6 @@ void getFluctuations(string in = "/sphenix/user/vbailey/MDC2HIJINGFluctuationNtu
   TH2D *h_window3x4Etot[3];
   TH2D *h_window7x7Etot[3];
 
-  TH1D *h_central_max7x7Et = new TH1D("h_central_max7x7Et","",1000,0,100);
-  TH1D *h_central_maxmean7x7Et = new TH1D("h_central_maxmean7x7Et","",1000,0,10);
-  TH1D *h_truth_jets = new TH1D("h_truth_jets","",100,0,100);
-  TH1D *h_matched_truth_jets = new TH1D("h_matched_truth_jets","",100,0,100);
-  TH1D *h_matched_truth_jets_trig = new TH1D("h_matched_truth_jets_trig","",100,0,100);
-  h_truth_jets->Sumw2();
-  h_matched_truth_jets->Sumw2();
-  h_matched_truth_jets_trig->Sumw2();
 
   double meanEt1x1sub[3];
   double meanEt3x4sub[3];
@@ -352,59 +344,7 @@ void getFluctuations(string in = "/sphenix/user/vbailey/MDC2HIJINGFluctuationNtu
     h_STDtot_TE[2]->Fill(totalEnergy, TMath::Sqrt(STDEt7x7 - meanEt7x7 * meanEt7x7) );
 
 
-    //get max tower Et
-    float maxtower = 0;
-    for (int i=1;i<4;i++){
-      for (int j=1;j<10;j++){
-	float towertot = 0;
-	for (int isys=0;isys<3;isys++){
-	  towertot += h_window7x7Etot[isys]->GetBinContent(i,j);
-	}
-	if(towertot > maxtower) maxtower = towertot;
-      }
-    }
-  
-    if(m_b < 4.88){
-      h_central_max7x7Et->Fill(maxtower);
-      h_central_maxmean7x7Et->Fill(maxtower/meanEt7x7);
 
-      //do some jet stuff
-      int njets = truthPt->size();
-      int nrecojets = pt->size();
-      float leadpt = 0;
-      int ismatched = 0;
-      for(int tj = 0; tj < njets; tj++){
-	if(truthPt->at(tj) < leadpt) continue;
-	leadpt = truthPt->at(tj);
-	ismatched = 0;
-
-	//do reco to truth jet matching
-	float matchEta, matchPhi, matchPt, matchE, dR;
-	float dRMax = 100;
-	for(int rj = 0; rj < nrecojets; rj++){
-	  float dEta = truthEta->at(tj) - eta->at(rj);
-	  float dPhi = truthPhi->at(tj) - phi->at(rj);
-	  dR = TMath::Sqrt(dEta*dEta + dPhi*dPhi);
-	  if(dR < dRMax){
-	    matchEta = eta->at(rj);
-	    matchPhi = phi->at(rj);
-	    matchPt = pt->at(rj);
-	    dRMax = dR;
-	  }
-	}
-
-	if(dRMax < 0.3){
-	  ismatched = 1;
-	} 
-      }
-      //fill hists
-      h_truth_jets->Fill(leadpt);
-      if(ismatched){
-	h_matched_truth_jets->Fill(leadpt);
-	if(maxtower/meanEt7x7 > 1.3) h_matched_truth_jets_trig->Fill(leadpt);
-      }
-
-    }
     for(int k = 0; k < 3; k++){
       h_window1x1Etot[k]->Reset();
       h_window3x4Etot[k]->Reset();
@@ -419,11 +359,6 @@ void getFluctuations(string in = "/sphenix/user/vbailey/MDC2HIJINGFluctuationNtu
   else if(subtraction == 2) s = "_subtracted_withflow";
   TFile *f = new TFile(Form("%s%s.root",out.c_str(),s.c_str()),"RECREATE");
  
-  h_central_max7x7Et->Write();
-  h_central_maxmean7x7Et->Write();
-  h_truth_jets->Write();
-  h_matched_truth_jets->Write();
-  h_matched_truth_jets_trig->Write();
   for(int i = 0; i < nsizes; i++){
     h_AvgEtot_IP[i]->Write();
     h_STDtot_IP[i]->Write();
