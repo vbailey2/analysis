@@ -72,18 +72,17 @@ class BuildMetaTowers
 		class TowerArrayEntry
 		{
 			double Energy;
-			double phicenter;
-			double etacenter;
-			int index;
+			double phi; //center of tower phi 
+			double eta; //center of tower eta
 		};
 
 		//Common Methods
-		void RunMetaTowerBuilder(float z);
+		void RunMetaTowerBuilder(float zTX);
 		//Fun4All load in 
 		void GetEMCALTowers(
 				TowerInfoContainerv2 EMCAL, 
 				RawTowerGeomContainer_Cylinderv1 EMCAL_geom, 
-				bool retower=false
+				bool isRetower=false
 				); //if using Fun4AllTower objects
 
 		void GetHCALTowers(
@@ -93,20 +92,20 @@ class BuildMetaTowers
 				); //if using Fun4AllTower objects
 		//Vandy Class load in 
 		void GetEMCALTowers(
-				Tower EMCAL,
-				bool retower=false
+				std::vector<Tower*> EMCAL,
+				bool isRetower=false
 				);
 		void GetHCALTowers(
-				Tower HCAL,
+				std::vector<Tower*> HCAL,
 				bool outer=false
 				);
 		//Just basic array 
 		void GetEMCALTowers(
-				std::vector<TowerArrayEntry> EMCAL,
-			       	bool retower = false;
+				std::vector<TowerArrayEntry*> EMCAL,
+			       	bool isRetower = false;
 				);
 		void GetHCALTowers(
-				std::vector<TowerArrayEntry> HCAL,
+				std::vector<TowerArrayEntry*> HCAL,
 				bool outer=false
 				);
 		//just returns configs
@@ -118,22 +117,25 @@ class BuildMetaTowers
 		std::string 	getInput() { return this->T; }; 
 		
 		//return the final object
-		std::array<TowerArrayEntry, 1536>* getMetaTowers() { return this->MetaTowers; };
+		std::array<TowerArrayEntry*, 1536>* getMetaTowers() { return this->MetaTowers; };
 
 	private:
 		//Private variables
 		float 		R { 1245 }; //IHCAL half radius in cm
 		std::string 	T { "VandyClass" }; //What input Type to expect
-		float 	R_OHCAL_Outer {269};
-		float 	R_OHCAL_Inner {182};
-		float 	R_IHCAL_Outer {137};
-		float 	R_IHCAL_Inner {116};
-		float 	R_EMCAL_Outer {116};
-		float	R_EMCAL_Inner { 90};	
-		std::array <TowerArrayEntry, 1536>* MetaTowers = new std::array <TowerArrayEntry, 1536> {}; 
-		std::array <TowerArrayEntry, 1536>* EMReTowers = new std::array <TowerArrayEntry, 1536> {}; 
-		std::array <TowerArrayEntry, 1536>* IHCaTowers = new std::array <TowerArrayEntry, 1536> {}; 
-		std::array <TowerArrayEntry, 1536>* OHCaTowers = new std::array <TowerArrayEntry, 1536> {};
+		const float 	R_OHCAL_Outer {269};
+		const float 	R_OHCAL_Inner {182};
+		const float 	R_IHCAL_Outer {137};
+		const float 	R_IHCAL_Inner {116};
+		const float 	R_EMCAL_Outer {116};
+		const float	R_EMCAL_Inner { 90};	
+		const float	R_OHCAL_MID { 1/2.*(R_OHCAL_Outer + R_OHCAL_Inner) };	
+		const float	R_IHCAL_MID { 1/2.*(R_IHCAL_Outer + R_IHCAL_Inner) };	
+		const float	R_EMCAL_MID { 1/2.*(R_EMCAL_Outer + R_EMCAL_Inner) };	
+		std::array <TowerArrayEntry*, 1536>* MetaTowers = new std::array <TowerArrayEntry*, 1536> {}; 
+		std::array <TowerArrayEntry*, 1536>* EMReTowers = new std::array <TowerArrayEntry*, 1536> {}; 
+		std::array <TowerArrayEntry*, 1536>* IHCaTowers = new std::array <TowerArrayEntry*, 1536> {}; 
+		std::array <TowerArrayEntry*, 1536>* OHCaTowers = new std::array <TowerArrayEntry*, 1536> {};
 		
 		//HCAL eta-phi physical geometry
 		const std::array <double, 24> etaEdges 	
@@ -190,26 +192,58 @@ class BuildMetaTowers
 			}
 			return;
 		}
-		void shiftEMCAL(TowerInfoContainer* emcal, bool retower);
-		void shiftIHCAL(TowerInfoContainer* ihcal);
-		void shiftOHCAL(TowerInfoContainer* ohcal);
-		void shiftEMCAL(Tower emcal, bool retower);
-		void shiftIHCAL(Tower ihcal);
-		void shiftOHCAL(Tower ohcal);
-		void shiftEMCAL(TowerArrayEntry emcal, bool retower);
-		void shiftIHCAL(Tower ihcal);
-		void shiftOHCAL(Tower ohcal);
-		void addMetaTower(TowerEntryArray tower)
+		void shiftEMCAL(std::vector<TowerArrayEntry*> emcal, bool isRetower, float zVTX)
+		{
+			if(!isRetower || (int) emcal.size() > 1536)
+			{
+				std::vector<TowerArrayEntry*> rtEM = RetowerEMCAL(emcal);
+				emcal.clear();
+				emcal = rtEM;
+			}
+			for(int i = 0; i<(int) emcal.size(); i++)
+			{
+				TowerArrayEntry* nTower = shiftTower(emcal.at(i), CALO::EMC, zVTX);
+				int N = calculateIndex( *nTower );
+				EMReTowers->at(N) = nTower;
+			}
+			return; 
+		}
+	
+		void shiftIHCAL(std::vector<TowerArrayEntry*> ihcal, float zVTX);
+		{
+			for(int i = 0; i<(int) ihcal.size(); i++)
+			{
+				TowerArrayEntry* nTower = shiftTower(ihcal.at(i), CALO::IHC, zVTX);
+				int N = calculateIndex( *nTower );
+				IHCaTowers->at(N) = nTower;
+			}
+			return; 
+		}
+		void shiftOHCAL(std::vector<TowerArrayEntry*> ohcal, float zVTX);
+		{
+			for(int i = 0; i<(int) ohcal.size(); i++)
+			{
+				TowerArrayEntry* nTower = shiftTower(ohcal.at(i), CALO::OHC, zVTX);
+				int N = calculateIndex( *nTower );
+				OHCaTowers->at(N) = nTower;
+			}
+			return; 
+		}
+		void addMetaTower(TowerArrayEntry tower)
 		{
 			double eta_val 	= tower.eta;
 			double phi_val	= tower.phi;
 			int etaBin 	= findEtaBin(eta_val);
 			int phiBin	= findPhiBin(phi_val);
-			int N 		= calculateIndex(etaBin, phiBin);
-
-			MetaTowers->at(N).E += tower.E;
+			int N 		= calculateIndex(tower);
+			if (!MetaTowers->at(N)) MetaTowers->at(N) = 
+				new TowerArrayEntry* { 0, getPhiCenter(phiBin), getEtaCenter(etaBin) };
+			MetaTowers->at(N)->E += tower.E;
 			return;
 		}
+		TowerArrayEntry* shiftTower(TowerArrayEntry* tower, CALO calo, float zVTX) 
+		{
+			tower->eta = CalculateEtaShift(
 };
 			
 #endif
