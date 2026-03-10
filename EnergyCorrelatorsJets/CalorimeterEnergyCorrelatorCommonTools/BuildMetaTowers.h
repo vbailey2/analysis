@@ -127,7 +127,7 @@ class BuildMetaTowers
 		std::array <TowerArrayEntry, 1536> EMReTowers {}; 
 		std::array <TowerArrayEntry, 1536> IHCaTowers {}; 
 		std::array <TowerArrayEntry, 1536> OHCaTowers {};
-
+		
 		//HCAL eta-phi physical geometry
 		const std::array <double, 24> etaEdges 	
 			{ -1.1000000, -1.0083333, -0.91666667, -0.82500000, -0.73333333, -0.64166667, 
@@ -146,3 +146,43 @@ class BuildMetaTowers
 				4.5605944, 4.6587692, 4.7569440, 4.8551187, 4.9532935, 5.0514683, 5.1496431, 
 				5.2478178, 5.3459926, 5.4441674, 5.5423421, 5.6405169, 5.7386917, 5.8368664, 
 				5.9350412, 6.0332160, 6.1313908, 6.2295655 };	
+		
+		std::array<double ,24> shiftedetaEdges {};
+
+		//Private Methods
+		double calculateEtaShift(double eta, double zVtx)
+		{
+			double z 	= R*std::sinh(eta);
+			double zshift	= z-zVtx;
+			zshift		= zshift / R;
+			double etashift	= std::asinh(zshift);
+			return etashift;
+		}
+
+		int calculateIndex(TowerArrayEntry tower) 
+		{
+			int index = tower.eta * 64 + tower.phi ;
+			return index;
+		}
+		
+		void decodeIndex(int index, int* ebr, int* pbr) 
+		{
+			
+			int etabin	= index / 64;
+			int phibin	= index % 64;
+			ebr = &etabin;
+			pbr = &phibin;
+			return;
+		}
+		
+		void shiftBinMins(double zVtx)
+		{
+			for(int i= 0; i<(int) etaEdges.size(); i++)
+			{
+				shiftedetaEdges[i]=calculateEtaShift(etaEdges[i], zVtx);
+			}
+			return;
+		}
+		
+};
+#endif
