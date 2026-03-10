@@ -12,7 +12,7 @@
 //									//
 //	Authors: 	Ben Kimelman, Skaydi 				//
 //	First commit: 	9 March 2026					//
-//	This commit: 	9 March 2026					//
+//	This commit: 	10 March 2026					//
 //	version: 	v1.0						//
 //									//
 //	Notes on this commit: First commit				//
@@ -61,7 +61,9 @@ class BuildMetaTowers
 				std::string input="VandyClass" /*Vandy Class, TowerInfo or Array*/
 			       ) 
 		{
-			this->R	= radius;
+			//assume that if radius given is small it is given in m, else
+			if(radius > 50 ) this->R = radius;
+			if(radius < 50 ) this->R = radius * 100;
 			this->T	= input;
 		}
 		~BuildMetaTowers(){};
@@ -116,17 +118,22 @@ class BuildMetaTowers
 		std::string 	getInput() { return this->T; }; 
 		
 		//return the final object
-		std::array<TowerArrayEntry, 1536> getMetaTowers() { return this->MetaTowers; };
+		std::array<TowerArrayEntry, 1536>* getMetaTowers() { return this->MetaTowers; };
 
 	private:
 		//Private variables
-		float 		R { 1.245 }; //IHCAL half radius
+		float 		R { 1245 }; //IHCAL half radius in cm
 		std::string 	T { "VandyClass" }; //What input Type to expect
-
-		std::array <TowerArrayEntry, 1536> MetaTowers {}; 
-		std::array <TowerArrayEntry, 1536> EMReTowers {}; 
-		std::array <TowerArrayEntry, 1536> IHCaTowers {}; 
-		std::array <TowerArrayEntry, 1536> OHCaTowers {};
+		float 	R_OHCAL_Outer {269};
+		float 	R_OHCAL_Inner {182};
+		float 	R_IHCAL_Outer {137};
+		float 	R_IHCAL_Inner {116};
+		float 	R_EMCAL_Outer {116};
+		float	R_EMCAL_Inner { 90};	
+		std::array <TowerArrayEntry, 1536>* MetaTowers = new std::array <TowerArrayEntry, 1536> {}; 
+		std::array <TowerArrayEntry, 1536>* EMReTowers = new std::array <TowerArrayEntry, 1536> {}; 
+		std::array <TowerArrayEntry, 1536>* IHCaTowers = new std::array <TowerArrayEntry, 1536> {}; 
+		std::array <TowerArrayEntry, 1536>* OHCaTowers = new std::array <TowerArrayEntry, 1536> {};
 		
 		//HCAL eta-phi physical geometry
 		const std::array <double, 24> etaEdges 	
@@ -183,6 +190,26 @@ class BuildMetaTowers
 			}
 			return;
 		}
-		
+		void shiftEMCAL(TowerInfoContainer* emcal, bool retower);
+		void shiftIHCAL(TowerInfoContainer* ihcal);
+		void shiftOHCAL(TowerInfoContainer* ohcal);
+		void shiftEMCAL(Tower emcal, bool retower);
+		void shiftIHCAL(Tower ihcal);
+		void shiftOHCAL(Tower ohcal);
+		void shiftEMCAL(TowerArrayEntry emcal, bool retower);
+		void shiftIHCAL(Tower ihcal);
+		void shiftOHCAL(Tower ohcal);
+		void addMetaTower(TowerEntryArray tower)
+		{
+			double eta_val 	= tower.eta;
+			double phi_val	= tower.phi;
+			int etaBin 	= findEtaBin(eta_val);
+			int phiBin	= findPhiBin(phi_val);
+			int N 		= calculateIndex(etaBin, phiBin);
+
+			MetaTowers->at(N).E += tower.E;
+			return;
+		}
 };
+			
 #endif
