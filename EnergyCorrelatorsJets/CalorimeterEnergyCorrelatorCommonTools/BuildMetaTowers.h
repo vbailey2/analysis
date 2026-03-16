@@ -77,7 +77,32 @@ class BuildMetaTowers
 		};
 
 		//Common Methods
-		void RunMetaTowerBuilder(float zTX);
+		void RunMetaTowerBuilder(float zVTX)
+		{
+			for( int i = 0; i < 24; i++ )
+			{
+				double eta =10.; 
+				shiftedetaEdges.at(i)=calculateEtaShift(etaEdges.at(i), zVTX);
+				if(i < (int) shiftedetaEdges.size() - 1 )
+					eta = 0.5*(shiftedEtaEdges.at(i),  shiftedEtaEdges.at(i+1));
+				else 
+					eta = 0.5*(shiftedEtaEdges.at(i),  1.1);
+				for( int j = 0; j < 64; j++)
+				{
+					double pt =100.; 
+					TowerArrayEntry* tower = 
+						new TowerArrayEntry* {0., shiftedEtaEdges.at(i), phiEdges.at(i)};
+					if(i < (int) phiEdges.size() - 1 ) 
+						eta = 0.5*(phiEdges.at(i),  phiEdges.at(i+1));
+					else 	
+						eta = 0.5*(phiEdges.at(i),  phiEdges.at(0));
+				}
+
+			}
+			
+
+
+		}
 		//Fun4All load in 
 		void GetEMCALTowers(
 				TowerInfoContainerv2 EMCAL, 
@@ -167,7 +192,21 @@ class BuildMetaTowers
 			double etashift	= std::asinh(zshift);
 			return etashift;
 		}
+		double calculateEtaShift(double eta, double zVtx, CAlO calo)
+		{
+			double r = this->R;
+			if( 		calo == CALO::EMCAL ) 	r = R_EMCAL_MID;
+			else if( 	calo == CALO::IHCAL )	r = R_IHCAL_MID;
+			else if(	calo == CALO::OHCAL ) 	r = R_OHCAL_MID;
+			else 					r = this->R;
+			double z 	= R*std::sinh(eta);
+			double zshift	= z-zVtx;
+			zshift		= zshift / R;
+			double etashift	= std::asinh(zshift);
+			return etashift;
+		}
 
+			
 		int calculateIndex(TowerArrayEntry tower) 
 		{
 			int index = tower.eta * 64 + tower.phi ;
@@ -243,7 +282,11 @@ class BuildMetaTowers
 		}
 		TowerArrayEntry* shiftTower(TowerArrayEntry* tower, CALO calo, float zVTX) 
 		{
-			tower->eta = CalculateEtaShift(
+			
+			tower->eta = CalculateEtaShift(tower->eta, zVTX, calo);
+			return tower; 
+		}
+
 };
 			
 #endif
