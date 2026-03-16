@@ -190,7 +190,30 @@ class BuildMetaTowers
 				std::vector<Tower*> EMCAL,
 				bool isRetower=false,
 				double zVTX = 0.
-				);
+				)
+		{
+		}
+		void GetVandyTowers(
+				std::vector<Tower*> CAL,
+				std::array<TowerArrayEntry*, 1536>* output_array
+				double zVTX,
+				CALO calo 
+				)
+		{
+			for(int i = 0; i<(int)CAL.size(); i++)
+			{
+				Tower* tw 	= CAL.at(i);
+				double E	= tw->e();
+				double px 	= tw->px();
+				double py	= tw->py();
+				double pz 	= tw->pz();
+				double p	= std::sqrt(std::pow(px, 2) + std::pow(py, 2) + std::pow(pz, 2));
+				double phi 	= std::atan2(px, py);
+				double eta	= std::atanh(pz/p);
+				TowerArrayEntry* tower = new TowerArrayEntry {E, phi, eta};
+			}
+		}	
+
 		void GetHCALTowers(
 				std::vector<Tower*> HCAL,
 				bool outer=false, 
@@ -305,6 +328,7 @@ class BuildMetaTowers
 			
 		int calculateIndex(TowerArrayEntry tower) 
 		{
+			//this is wrong I need to buid the index from the bin number
 			int index = tower.eta * 64 + tower.phi ;
 			return index;
 		}
