@@ -106,7 +106,8 @@ class BuildMetaTowers
 					if(phi < -M_PI) phi += 	2*M_PI;
 					tower->eta = eta;
 					tower->phi = phi;
-					MetaTowers->push_back(tower);
+					int index  = CalculateIndex(tower);
+					MetaTower->at(index)=tower;
 				}
 
 			}
@@ -125,8 +126,19 @@ class BuildMetaTowers
 		{
 			for(int t = 0; t < (int)CAL.size(); t++)
 			{
-				auto key = CAL.encode_key(n) ;	
+				auto key = CAL.encode_key(n) ;
+				auto f4tower 	= CAL.get_tower_at_channel(t);
+				int phibin 	= CAL.getTowerPhiBin(key);
+				int etabin 	= CAL.getTowerEtabin(key);
+				double phi	= geom.get_phicenter(phibin);
+				double eta	= geom.get_etaecenter(etabin);
+				double E	= f4tower->get_energy();
+				TowerArrayEntry* tower =
+					new TowerArrayEntry {E, phi, eta};
+				int index 	= CalculateIndex(tower);
+				Towers->at(index) = tower;
 			}
+			return;
 		}	
 		void GetEMCALTowers(
 				TowerInfoContainerv2 EMCAL, 
@@ -192,8 +204,9 @@ class BuildMetaTowers
 				)
 		{
 			CALO calo = CALO::EMCAL;
-			for(int i = 0; i <(int)EMReTowers->size(); i++) 
+			for(int i = 0; i <(int)EMCAL->size(); i++) 
 			{
+				EMReTowers->at(i) 	= EMCAL->at(i);
 				EMReTowers->at(i)->eta 	= calculateEtaShift(EMReTower->at(i)->eta, zVTX, calo);
 			}
 			return;
@@ -206,10 +219,13 @@ class BuildMetaTowers
 				)
 		{
 			CALO calo = CALO::OHCAL;
-			if(!outer) calo = CALO::IHCAL;
-			for(int i = 0; i <(int)EMReTowers->size(); i++) 
+			std::array<TowerArrayEntry*>* HC = OHCaTowers;
+			if(!outer){
+			       	calo 	= CALO::IHCAL;
+				HC	= IHCaTowers;
+			for(int i = 0; i <(int)HCAL->size(); i++) 
 			{
-				EMReTowers->at(i)->eta 	= calculateEtaShift(EMReTower->at(i)->eta, zVTX, calo);
+				HC->at(i)->eta 	= calculateEtaShift(HCAL->at(i)->eta, zVTX, calo);
 			}
 			return;
 		}
