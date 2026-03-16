@@ -69,20 +69,26 @@ class BuildMetaTowers
 		~BuildMetaTowers(){};
 		
 		//struct for Array input 
-		class TowerArrayEntry
+		struct TowerArrayEntry
 		{
 			double Energy;
 			double phi; //center of tower phi 
 			double eta; //center of tower eta
 		};
-
+		enum CALO
+		{
+			META 	= 0,
+			EMCAL 	= 1,
+			IHCAL	= 2,
+			OHCAL	= 3
+		};
 		//Common Methods
 		void RunMetaTowerBuilder(float zVTX)
 		{
+			for( int i = 0; i < 24; i++ ) shiftedetaEdges.at(i)=calculateEtaShift(etaEdges.at(i), zVTX);
 			for( int i = 0; i < 24; i++ )
 			{
 				double eta =10.; 
-				shiftedetaEdges.at(i)=calculateEtaShift(etaEdges.at(i), zVTX);
 				if(i < (int) shiftedetaEdges.size() - 1 )
 					eta = 0.5*(shiftedEtaEdges.at(i),  shiftedEtaEdges.at(i+1));
 				else 
@@ -93,46 +99,120 @@ class BuildMetaTowers
 					TowerArrayEntry* tower = 
 						new TowerArrayEntry* {0., shiftedEtaEdges.at(i), phiEdges.at(i)};
 					if(i < (int) phiEdges.size() - 1 ) 
-						eta = 0.5*(phiEdges.at(i),  phiEdges.at(i+1));
+						phi = 0.5*(phiEdges.at(i),  phiEdges.at(i+1));
 					else 	
-						eta = 0.5*(phiEdges.at(i),  phiEdges.at(0));
+						phi = 0.5*(phiEdges.at(i),  phiEdges.at(0));
+					if(phi > M_PI) 	phi += -2*M_PI;
+					if(phi < -M_PI) phi += 	2*M_PI;
+					tower->eta = eta;
+					tower->phi = phi;
+					MetaTowers->push_back(tower);
 				}
 
 			}
-			
-
+			for(int i=0; i<(int)EMReTowers->size(); i++) AddMetaTower(EMReTowers->at(i));
+			for(int i=0; i<(int)IHCaTowers->size(); i++) AddMetaTower(IHCaTowers->at(i));
+			for(int i=0; i<(int)OHCaTowers->size(); i++) AddMetaTower(OHCaTowers->at(i));
+			return;
 
 		}
 		//Fun4All load in 
+		void GetFun4AllTowers( 
+				TowerInfoContainerv2 CAL, 
+				RawTowerGeomContainer_Cylinderv1 geom, 
+				std::array<TowerArrayEntry*, 1536>* Towers
+				)
+		{
+			for(int t = 0; t < (int)CAL.size(); t++)
+			{
+				auto key = CAL.encode_key(n) ;	
+			}
+		}	
 		void GetEMCALTowers(
 				TowerInfoContainerv2 EMCAL, 
 				RawTowerGeomContainer_Cylinderv1 EMCAL_geom, 
-				bool isRetower=false
-				); //if using Fun4AllTower objects
-
+				bool isRetower=false,
+				double zVTZ = 0.
+				) //if using Fun4AllTower objects
+		{
+			if(!isRetower){
+				std::cout<<"Please use the retowered EMCAL" <<std::endl;
+				return;
+			}
+			CALO cal = CALO::EMCAL;
+			GetFun4AllTowers(EMCAL, EMCAL_geom, EMReTowers);
+			for(int i = 0; i <(int)EMReTowers->size(); i++) 
+			{
+				EMReTowers->at(i)->eta 	= calculateEtaShift(EMReTower->at(i)->eta, zVTX, calo);
+			}
+			return;
+		}
 		void GetHCALTowers(
 				TowerInfoContainerv2 HCAL, 
 				RawTowerGeomContainer_Cylinderv1 HCAL_geom, 
-				bool outer=false
-				); //if using Fun4AllTower objects
+				bool outer=false,
+				double zVTX = 0.
+				)
+		{
+			std::array<TowerEntryArray*, 1536>* HCaTowers = NULL;
+			CALO cal = CALO::OHCAL;
+			if(outer){
+				HCaTowers 	= OHCaTowers;
+				calo 		= CALO::OHCAL;
+			}
+			else{
+				HCaTowers 	= IHCaTowers; 	
+				calo 		= CALO::IHCAL;
+			}
+			GetFun4AllTowers(HCAL, HCAL_geom, HCaTowers);
+			for(int i = 0; i <(int)HCaTowers->size(); i++) 
+			{
+				HCaTowers->at(i)->eta 	= calculateEtaShift(HCaTower->at(i)->eta, zVTX, calo);
+			}
+			return;
+		}
+
+			//if using Fun4AllTower objects
 		//Vandy Class load in 
 		void GetEMCALTowers(
 				std::vector<Tower*> EMCAL,
-				bool isRetower=false
+				bool isRetower=false,
+				double zVTX = 0.
 				);
 		void GetHCALTowers(
 				std::vector<Tower*> HCAL,
-				bool outer=false
+				bool outer=false, 
+				double zVTX = 0.
 				);
 		//Just basic array 
 		void GetEMCALTowers(
 				std::vector<TowerArrayEntry*> EMCAL,
-			       	bool isRetower = false;
-				);
+			       	bool isRetower = false,
+				double zVTX = 0.
+				)
+		{
+			CALO calo = CALO::EMCAL;
+			for(int i = 0; i <(int)EMReTowers->size(); i++) 
+			{
+				EMReTowers->at(i)->eta 	= calculateEtaShift(EMReTower->at(i)->eta, zVTX, calo);
+			}
+			return;
+		}
+
 		void GetHCALTowers(
 				std::vector<TowerArrayEntry*> HCAL,
-				bool outer=false
-				);
+				bool outer=false,
+				double zVTX = 0.
+				)
+		{
+			CALO calo = CALO::OHCAL;
+			if(!outer) calo = CALO::IHCAL;
+			for(int i = 0; i <(int)EMReTowers->size(); i++) 
+			{
+				EMReTowers->at(i)->eta 	= calculateEtaShift(EMReTower->at(i)->eta, zVTX, calo);
+			}
+			return;
+		}
 		//just returns configs
 		void setRadius	( float r = 1.245 ) { this->R = r ; } ;
 	       	float getRadius	( ) { return this->R; };
