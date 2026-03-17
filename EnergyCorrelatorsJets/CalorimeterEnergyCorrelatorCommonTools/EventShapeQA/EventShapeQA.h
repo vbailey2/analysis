@@ -25,7 +25,7 @@
 #include <calobase/RawTowerGeomContainer.h>
 #include <calobase/RawTowerGeomContainer_Cylinderv1.h>
 
-//G4 opbjects
+//G4 objects
 #include <g4main/PHG4Particle.h>
 #include <g4main/PHG4Hit.h>
 #include <g4main/PHG4TruthInfoContainer.h>

@@ -21,7 +21,6 @@
 #include <string>
 #include <utility>
 
-#define Pi 3.1415926535
 
 class DiscretizationCorrection
 {	
@@ -155,7 +154,7 @@ class DiscretizationCorrection
 		float m_jetradius		=0.;
 		bool isSizeCorrection		=false;
 		bool isDiscretizationCorrection	=false;
-		float sPHENIX_maxRL 		=std::sqrt(std::pow(PI,2)+std::pow(2.2, 2));
+		float sPHENIX_maxRL 		=std::sqrt(std::pow(M_PI,2)+std::pow(2.2, 2));
 
 		int correction_order = 3; //how many powers of R_L to expand the elliptic integrals to
 		
@@ -163,7 +162,7 @@ class DiscretizationCorrection
 		TH1F* Correction_factor_hist;
 		float order_by_order_cont_jet(float RL)
 		{
-			float ep = R_L*pow(2*PI*std::pow(m_jetradius, 2), -1);
+			float ep = R_L*pow(2*M_PI*std::pow(m_jetradius, 2), -1);
 			float ic = std::sqrt(4*std::pow(m_jetradius, 2)-std::pow(R_L, 2)) + m_jetradius*std::arccos(R_L*std::pow(2*m_jetradius, -1));
 			if(correction_order >=3 ){
 			       	ic+= -R_L/3.*std::pow(std::arccos(R_L*std::pow(2*m_jetradius, -1)), 3);
@@ -185,7 +184,7 @@ class DiscretizationCorrection
 		float all_order_continuous_jet(float RL)
 		{
 			//This is the solution of the integral for geometric pairs at distance RL where both points lie within the jet
-			float I_inc=R_L*std::pow(2*PI*std::pow(m_jetradius, 2), -1)*std::sqrt(4*std::pow(m_jetradius, 2)-std::pow(RL,2)) * all_order_continous_full(RL);
+			float I_inc=R_L*std::pow(2*M_PI*std::pow(m_jetradius, 2), -1)*std::sqrt(4*std::pow(m_jetradius, 2)-std::pow(RL,2)) * all_order_continous_full(RL);
 			float elipint=std::ellint_2f(std::arccos(RL*std::pow(2*m_jetradius, -1)), std::pow(RL*std::pow(m_jetradius, -1), 2)) *all_order_continuous_full(RL);
 			I_inc+=elipint;
 			return I_inc;
@@ -193,7 +192,7 @@ class DiscretizationCorrection
 		float all_order_continuous_full(float RL)
 		{
 			//this is the total pairs in the phase space defined by the points lying within the jet and their pairs at distance R_l irrespective of the pair being in the jet radius
-			float I_Total=std::pow(2*PI, 2)*RL*m_jetradius;
+			float I_Total=std::pow(2*M_PI, 2)*RL*m_jetradius;
 			return I_Total;
 		}
 		float all_order_discrete_jet(float RL) 
@@ -259,7 +258,7 @@ class DiscretizationCorrection
 		{
 			float max=0.;
 			if(isSizeCorrection) max=m_jetradius/m_latticesize;
-			else max=std::sqrt(std::pow(2.2, 2) +std::pow(2*PI, 2))/m_latticesize; //set to sPHENIX phase space
+			else max=std::sqrt(std::pow(2.2, 2) +std::pow(2*M_PI, 2))/m_latticesize; //set to sPHENIX phase space
 			for(int i=0; i<std::pow(max, 2); i++)
 			{
 				this->r2s.push_back(sum_of_squares(r));
