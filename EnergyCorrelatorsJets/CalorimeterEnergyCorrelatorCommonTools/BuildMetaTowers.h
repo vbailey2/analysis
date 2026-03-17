@@ -122,6 +122,8 @@ class BuildMetaTowers
 				TowerInfoContainerv2 CAL, 
 				RawTowerGeomContainer_Cylinderv1 geom, 
 				std::array<TowerArrayEntry*, 1536>* Towers
+				double zVTX,
+				CALO calo
 				)
 		{
 			for(int t = 0; t < (int)CAL.size(); t++)
@@ -133,9 +135,10 @@ class BuildMetaTowers
 				double phi	= geom.get_phicenter(phibin);
 				double eta	= geom.get_etaecenter(etabin);
 				double E	= f4tower->get_energy();
+				eta 		= CalculateEtaShift(eta, zVTX, calo);
 				TowerArrayEntry* tower =
 					new TowerArrayEntry {E, phi, eta};
-				int index 	= CalculateIndex(tower);
+				int index 	= CalculateIndex(tower, true);
 				Towers->at(index) = tower;
 			}
 			return;
@@ -144,7 +147,7 @@ class BuildMetaTowers
 				TowerInfoContainerv2 EMCAL, 
 				RawTowerGeomContainer_Cylinderv1 EMCAL_geom, 
 				bool isRetower=false,
-				double zVTZ = 0.
+				double zVTX = 0.
 				) //if using Fun4AllTower objects
 		{
 			if(!isRetower){
@@ -152,11 +155,7 @@ class BuildMetaTowers
 				return;
 			}
 			CALO cal = CALO::EMCAL;
-			GetFun4AllTowers(EMCAL, EMCAL_geom, EMReTowers);
-			for(int i = 0; i <(int)EMReTowers->size(); i++) 
-			{
-				EMReTowers->at(i)->eta 	= calculateEtaShift(EMReTower->at(i)->eta, zVTX, calo);
-			}
+			GetFun4AllTowers(EMCAL, EMCAL_geom, EMReTowers, zVTX, cal);
 			return;
 		}
 		void GetHCALTowers(
@@ -170,17 +169,13 @@ class BuildMetaTowers
 			CALO cal = CALO::OHCAL;
 			if(outer){
 				HCaTowers 	= OHCaTowers;
-				calo 		= CALO::OHCAL;
+				cal 		= CALO::OHCAL;
 			}
 			else{
 				HCaTowers 	= IHCaTowers; 	
-				calo 		= CALO::IHCAL;
+				cal 		= CALO::IHCAL;
 			}
-			GetFun4AllTowers(HCAL, HCAL_geom, HCaTowers);
-			for(int i = 0; i <(int)HCaTowers->size(); i++) 
-			{
-				HCaTowers->at(i)->eta 	= calculateEtaShift(HCaTower->at(i)->eta, zVTX, calo);
-			}
+			GetFun4AllTowers(HCAL, HCAL_geom, HCaTowers, zVTX, cal);
 			return;
 		}
 
@@ -192,6 +187,31 @@ class BuildMetaTowers
 				double zVTX = 0.
 				)
 		{
+			if(!isRetower){
+				std::cout<<"Please use retowered"<<std::endl;
+				return;
+			}
+			CALO calo	= CALO::EMCAL;
+			GetVandyTowers(EMCAL, EMReTowers, zVTX, calo);
+			return;
+		}
+		void GetHCALTowers(
+				std::vector<Tower*> HCAL,
+				bool outer=false, 
+				double zVTX = 0.
+				);
+		{
+			if(outer)
+			{
+				CALO calo	= CALO::OHCAL;
+				GetVandyTowers(HCAL, OHCaTowers, zVTX, calo);
+			}
+			else if(!outer)
+			{
+				CALO calo	= CALO::IHCAL;
+				GetVandyTowers(HCAL, IHCaTowers, zVTX, calo);
+			}
+			return;
 		}
 		void GetVandyTowers(
 				std::vector<Tower*> CAL,
@@ -210,15 +230,14 @@ class BuildMetaTowers
 				double p	= std::sqrt(std::pow(px, 2) + std::pow(py, 2) + std::pow(pz, 2));
 				double phi 	= std::atan2(px, py);
 				double eta	= std::atanh(pz/p);
+				eta 		= CalculateEtaShift(eta, zVTX, calo);
 				TowerArrayEntry* tower = new TowerArrayEntry {E, phi, eta};
+				int index	= CalculateIndex(tower, true);
+				output_array->at(i) = tower;
 			}
+			return;
 		}	
 
-		void GetHCALTowers(
-				std::vector<Tower*> HCAL,
-				bool outer=false, 
-				double zVTX = 0.
-				);
 		//Just basic array 
 		void GetEMCALTowers(
 				std::vector<TowerArrayEntry*> EMCAL,
@@ -326,13 +345,49 @@ class BuildMetaTowers
 		}
 
 			
-		int calculateIndex(TowerArrayEntry tower) 
+		int calculateIndex(TowerArrayEntry tower, bool useSlant) 
 		{
-			//this is wrong I need to buid the index from the bin number
-			int index = tower.eta * 64 + tower.phi ;
+			int etabin 	= 0;
+			int phibin	= 0;
+			etabin 		= LookupBin(tower.eta, useSlant, true);
+			phibin		= LookupBin(tower.phi, useSlant, false);
+			int index = etabin * 64 + phibin ;
 			return index;
 		}
-		
+		int LookupBin(double towervalue, bool useSlant, bool isEta)
+		{
+			std::vector<double> tempBottom;
+			int binN=0;
+			if(isEta && useSlant)
+			{
+				for(int i = 0; i<(int) shiftedEtaEdges.size(); i++){
+					tempBottom.push_back(shiftedEtaEdges.at(i));
+				}
+			}
+			else if (isEta)
+			{
+				for(int i = 0; i<(int) EtaEdges.size(); i++){
+					tempBottom.push_back(EtaEdges.at(i));
+				}
+			}
+			else 
+			{
+				for(int i = 0; i<(int) PhiEdges.size(); i++){
+					tempBottom.push_back(PhiEdges.at(i));
+				}
+			}
+			for(int i = 0; i<(int)tempBottom.size(); i++)
+			{
+				if(towervalue >= tempBottom.at(i)){
+					binN = i;
+					continue;
+				}
+				if(towervalue < tempBottom.at(i)){
+					break;
+				}
+			}
+			return binN;
+		}
 		void decodeIndex(int index, int* ebr, int* pbr) 
 		{
 			
