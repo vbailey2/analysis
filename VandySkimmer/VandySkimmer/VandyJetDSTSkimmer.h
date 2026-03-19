@@ -104,6 +104,10 @@ class VandyJetDSTSkimmer : public SubsysReco
     const std::string sampleNames[8] = {"MB","Jet5","Jet12","Jet20","Jet30","Jet40","Jet50","Jet60"};
     const float truthJetR_pTMin[4][8] = {{0,5, 12, 20, 30, 40, 50, 60}, {0,6, 13, 21, 31, 41, 51, 61}, {0,7, 14, 21, 32, 42, 52, 62}, {0,10, 19, 27, 38, 49, 58, 68}};
 
+    const float truthWeight[8] = {4.1970e+10, 1.3878e+08, 1.4903e+06, 6.2623e+04, 2.5298e+03, 1.3443e+02, 7.3113, 3.261e-01}; //from wiki, in pb
+
+    float m_minJetPt{0.0};
+    float m_vtx_cut{60.0};
     float m_minJetPt{0.0};
     float m_vtx_cut{60.0};
 

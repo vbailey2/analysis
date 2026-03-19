@@ -19,6 +19,12 @@ class JetInfo {
         double e() {return E;};
         void set_e(double te) {E = te;};
 
+        double pt() {return Pt;};
+        void set_pt(double pt) {Pt = pt;};
+
+        double emCaloFrac() {return EMCaloFrac;};
+        void set_emCaloFrac(double cf) {EMCaloFrac = cf;};
+
         std::vector<int> get_constituents() { return constituents; };
         void set_constituents (std::vector<int> jetCons) { constituents = jetCons; };
 
@@ -28,5 +34,7 @@ class JetInfo {
         double Py;
         double Pz;
         double E;
+        double Pt;
+        double EMCaloFrac;
         std::vector<int> constituents;
 };

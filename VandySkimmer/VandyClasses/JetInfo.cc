@@ -8,6 +8,8 @@ void JetInfo::CopyTo(JetInfo* jet)
     jet->set_py(Py);
     jet->set_pz(Pz);
     jet->set_e(E);
+    jet->set_pt(Pt);
+    jet->set_emCaloFrac(EMCaloFrac);
     std::vector<int> constit;
     for(auto cons : constituents)
     {

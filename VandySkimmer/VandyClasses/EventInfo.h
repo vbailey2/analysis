@@ -34,15 +34,42 @@ class EventInfo {
         float get_subleadTruth_pT() {return subleadTruth_pT;};
         void set_subleadTruth_pT(float pT){ subleadTruth_pT = pT; };
 
-    private:
-        double z_vtx{0.0};
-        double ZDC_rate{0.0};
-        bool dijet_event = false;
-        float lead_pT{-999};
-        float sublead_pT{-999};
-        double z_vtx_truth{0.0};
-        bool dijetTruth_event = true;
-        float leadTruth_pT{-999};
-        float subleadTruth_pT{-999};
+        double get_dijetDeltat() { return dijetDeltat; };
+        void set_dijetDeltat(double dijet){ dijetDeltat = dijet; };
+       
+	double get_dijetDeltatTruth() { return dijetDeltatTruth; };
+        void set_dijetDeltatTruth(double dijet){ dijetDeltatTruth = dijet; };
 
-    };
+        bool is_dijetDeltatPass() { return dijetDeltatPass; };
+        void set_dijetDeltatPass(bool dijet){ dijetDeltatPass = dijet; };
+       
+	bool is_dijetDeltatTruthPass() { return dijetDeltatTruthPass; };
+        void set_dijetDeltatTruthPass(bool dijet){ dijetDeltatTruthPass = dijet; };
+
+        float get_dijetDeltaPhi() { return dijetDeltaPhi; };
+        void set_dijetDeltaPhi(float dijet){ dijetDeltaPhi = dijet; };
+       
+	float get_dijetDeltaPhiTruth() { return dijetDeltaPhiTruth; };
+        void set_dijetDeltaPhiTruth(float dijet){ dijetDeltaPhiTruth = dijet; };
+
+	float get_TruthWeight() { return TruthWeight; };
+        void set_TruthWeight(float dijet){ TruthWeight = dijet; };
+    
+    private:
+        double 	z_vtx{0.0};
+        double 	ZDC_rate{0.0};
+        bool 	dijet_event = false;
+        float 	lead_pT{-999};
+        float 	sublead_pT{-999};
+        double 	z_vtx_truth{0.0};
+        bool 	dijetTruth_event = true;
+        float 	leadTruth_pT{-999};
+        float 	subleadTruth_pT{-999};
+	double	dijetDeltat {-999};
+	double 	dijetDeltatTruth {-999};
+	bool	dijetDeltatPass = false;
+	bool 	dijetDeltatTruthPass = false;
+	float 	dijetDeltaPhi {-999};
+	float 	dijetDeltaPhiTruth {-999};
+	float 	TruthWeight {-999};    
+};

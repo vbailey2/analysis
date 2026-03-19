@@ -613,6 +613,10 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet()
 {
   std::pair<float, float> pTs {-999, -999};
 
+  m_eventInfo->set_dijetDeltatPass(m_cutParams.get_int_param("passDeltatCut"));
+  double DeltaT = m_cutParams.get_double_param("maxJett");
+  DeltaT += -1.* m_cutParams.get_double_param("subJett");
+  m_eventInfo->set_dijetDeltat(Delta_T);
   if(!m_doSim && !m_cutParams.get_int_param("passDeltatCut"))
   {
     if(Verbosity())
@@ -677,6 +681,7 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet()
   float dPhi = subleadJet->get_phi() - leadJet->get_phi();
   if(dPhi > M_PI) dPhi -= 2*M_PI;
   if(dPhi < -M_PI) dPhi += 2*M_PI;
+  m_eventInfo->setdijetDeltaPhi(dPhi);
   if(std::abs(dPhi) < 0.75*M_PI)
   {
     return pTs;
@@ -742,6 +747,7 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet()
   float dPhi = subleadJet->get_phi() - leadJet->get_phi();
   if(dPhi > M_PI) dPhi -= 2*M_PI;
   if(dPhi < -M_PI) dPhi += 2*M_PI;
+  m_eventInfo->setdijetDeltaPhiTruth(dPhi);
   if(std::abs(dPhi) < 0.75*M_PI)
   {
     return pTs;
