@@ -297,7 +297,7 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       for(int j=0; j<(int)truthJets[i]->size(); j++)
       {
         Jet *jet = truthJets[i]->get_jet(j);
-        if(jet->get_pt() > truthJetR_pTMin[i][sampleNumber])
+        if(jet->get_pt() > truthJetR_pTMin[i][sampleNumber] && jet->get_pt() <= truthJetR_pTMin[i][sampleNumber+1])
         {
           goodTruthJet = true;
           break;
