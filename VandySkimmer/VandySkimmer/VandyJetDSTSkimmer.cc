@@ -426,7 +426,7 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
   m_eventInfo->set_z_vtx(m_vtx_z);
   m_eventInfo->set_ZDC_rate(m_ZDC_coincidence);
 
-  if(!goodJet)
+  if(m_doSim && !goodJet)
   {
     for(int r=0; r<4; r++)
     {
@@ -437,6 +437,11 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
     T->Fill();
 
     return Fun4AllReturnCodes::EVENT_OK;
+  }
+
+  if(!m_doSim && !goodJet)
+  {
+    return Fun4AllReturnCodes::ABORTEVENT;
   }
 
   for(int r=0; r<4; r++)
