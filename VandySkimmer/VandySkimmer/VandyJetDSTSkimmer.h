@@ -117,9 +117,7 @@ class VandyJetDSTSkimmer : public SubsysReco
     int m_runnumber{0};
     double m_ZDC_coincidence{0.0};
 
-    int nRemSim{0};
-    int nRemNoSim{0};
-    int nRem_dT{0};
+    int nRem{0};
 
     float m_vtx_z{-999};
     float m_vtx_z_truth{-999};

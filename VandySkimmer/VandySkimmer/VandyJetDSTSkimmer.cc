@@ -169,7 +169,11 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
 
 
   num++;
-  std::cout << "working on event " << num << std::endl;
+  if(Verbosity())
+  {
+     std::cout << "working on event " << num << "   number of removed events so far: " << nRem << std::endl;
+  }
+
 
   m_towerInfo.clear();
   m_truthParticles.clear();
@@ -203,6 +207,7 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       {
         std::cout << "no leading truth jet for this sample in any jet radius" << std::endl;
       }
+      nRem++;
       return Fun4AllReturnCodes::ABORTEVENT;
     }
 
@@ -399,7 +404,7 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
 
   //Flag event as good only if one (or more) jets above pT threshold for each radius is found
   //If good jet is found at one R, entire event is flagged as good
-  bool goodJet = !goodTiming;
+  bool goodJet = false;
   if(goodTiming)
   {
     for(int i=3; i>=0; i--)
@@ -419,8 +424,6 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       }
     }
   }
-  else goodJet = false;
-
 
   //set event info
   m_eventInfo->set_z_vtx(m_vtx_z);
@@ -441,6 +444,7 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
 
   if(!m_doSim && !goodJet)
   {
+    nRem++;
     return Fun4AllReturnCodes::ABORTEVENT;
   }
 
