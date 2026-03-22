@@ -607,6 +607,8 @@ int VandyJetDSTSkimmer::End(PHCompositeNode * /*topNode*/)
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
+double VandyJetDSTSkimmer::getTruthOHCALFrac()
+{
 
 //____________________________________________________________________________..
 std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet()
