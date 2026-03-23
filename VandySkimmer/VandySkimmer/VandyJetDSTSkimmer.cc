@@ -169,7 +169,10 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
 
 
   num++;
-  std::cout << "working on event " << num << std::endl;
+  if(Verbosity())
+  {
+     std::cout << "working on event " << num << "   number of removed events so far: " << nRem << std::endl;
+  }
 
 
   m_towerInfo.clear();
@@ -184,27 +187,154 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
   }
   m_topoclusters.clear();
 
+  if(m_doSim)
+  {
+    //get leading truth pT and skip events where it is outside the range for each sample for ALL jet R
+    bool goodTruthLeadJet[4] = {false, false, false, false};
+    for(int r=0; r<4; r++)
+    {
+      float lead_pT = -999;
+      for(auto jet : *truthJets[r])
+      {
+        double pT = jet->get_pt();
+        if(pT > lead_pT) lead_pT = pT;
+      }
+      if(lead_pT >= truthJetR_pTMin[r][sampleNumber] && lead_pT < truthJetR_pTMin[r][sampleNumber+1]) goodTruthLeadJet[r] = true;
+    }
+    if(!goodTruthLeadJet[0] && !goodTruthLeadJet[1] && !goodTruthLeadJet[2] && !goodTruthLeadJet[3])
+    {
+      if(Verbosity())
+      {
+        std::cout << "no leading truth jet for this sample in any jet radius" << std::endl;
+      }
+      nRem++;
+      return Fun4AllReturnCodes::ABORTEVENT;
+    }
+
+    m_eventInfo->set_cross_section(cs[sampleNumber]);
+
+    int truthVtxIndex = truthParticles->GetPrimaryVertexIndex();
+    if(truthParticles->GetPrimaryVtx(truthVtxIndex))
+    {
+      m_vtx_z_truth = truthParticles->GetPrimaryVtx(truthVtxIndex)->get_z();
+    }
+    m_eventInfo->set_z_vtx_truth(m_vtx_z_truth);
+
+    for(int r=0; r<4; r++)
+    {
+      if(goodTruthLeadJet[r])
+      {
+        std::pair<float,float> dijetTruth = isGoodTruthDijet(r);
+        m_eventInfo->set_dijetTruth_event(r, (dijetTruth.first >= 5.0 && dijetTruth.second >= 5.0 ? true : false));
+        m_eventInfo->set_leadTruth_pT(r, dijetTruth.first);
+        m_eventInfo->set_subleadTruth_pT(r, dijetTruth.second);
+      }
+      else
+      {
+        m_eventInfo->set_dijetTruth_event(r, false);
+        m_eventInfo->set_leadTruth_pT(r, -999);
+        m_eventInfo->set_subleadTruth_pT(r, -999);
+      }
+    }
+
+    //Particles
+    auto range = truthParticles->GetPrimaryParticleRange();
+    for(auto it=range.first; it!=range.second; ++it)
+    {
+      PHG4Particle* p = it->second;
+      if(!p) continue;
+      if(p->get_e() <= 0) continue;
+
+      Tower tmpTower;
+      tmpTower.set_px(p->get_px());
+      tmpTower.set_py(p->get_py());
+      tmpTower.set_pz(p->get_pz());
+      tmpTower.set_e(p->get_e());
+      tmpTower.set_calo(4);
+
+      m_truthParticles.push_back(tmpTower);
+      m_towerInfoTruth_map[std::make_pair(4, p->get_track_id())] = m_towerInfo.size() - 1;
+    }
+
+    for(int r=0; r<4; r++)
+    {
+      for(auto jet : *truthJets[r])
+      {
+        if (jet->get_pt() < m_minJetPt)
+        {
+          continue;
+        }
+
+        std::vector<int> cons;
+        for(auto comp : jet->get_comp_vec())
+        {
+          int calo = -999;
+        
+          Jet::SRC source = comp.first;
+          int tower_id = static_cast<int>(comp.second);
+          if(source == Jet::SRC::HEPMC_IMPORT || source == Jet::SRC::PARTICLE || source == Jet::SRC::VOID)
+          {
+            calo = 4;
+          }
+        
+          if(calo == -999)
+          {
+            continue;
+          }
+          std::pair<int, int> lookup_key {calo, tower_id};
+          if(m_towerInfoTruth_map.find(lookup_key) != m_towerInfoTruth_map.end())
+          {
+            cons.push_back(m_towerInfoTruth_map[lookup_key]);
+          }
+        }
+        JetInfo tmpJet;
+        tmpJet.set_px(jet->get_px());
+        tmpJet.set_py(jet->get_py());
+        tmpJet.set_pz(jet->get_pz());
+        tmpJet.set_e(jet->get_e());
+        tmpJet.set_constituents(cons);
+        m_truthJetInfo[r].push_back(tmpJet);
+     }
+    }
+  }//end of all truth stuff
+  else
+  {
+    m_eventInfo->set_z_vtx_truth(-999);
+    for(int r=0; r<4; r++)
+    {
+      m_eventInfo->set_dijetTruth_event(r,true);
+      m_eventInfo->set_leadTruth_pT(r,-999);
+      m_eventInfo->set_subleadTruth_pT(r,-999);
+    }
+  }
+
   PHNodeIterator itNode(topNode);
   PHCompositeNode* parNode = dynamic_cast<PHCompositeNode*>(itNode.findFirst("PHCompositeNode","PAR"));
   PdbParameterMap* flagNode;
-  if(parNode)
+
+  //no timing cuts on reco, only data
+  if(!m_doSim)
   {
-    flagNode = findNode::getClass<PdbParameterMap>(parNode, "TimingCutParams"); //note - needs to be the same as the "name" field in the object instantiation in the macro
+    if(parNode)
+    {
+      flagNode = findNode::getClass<PdbParameterMap>(parNode, "TimingCutParams"); //note - needs to be the same as the "name" field in the object instantiation in the macro
+    }
+    else
+    {
+      std::cout << "No parNode! Abort run." << std::endl;
+      return Fun4AllReturnCodes::ABORTRUN;
+    }
+    if(flagNode)
+    {
+      m_cutParams.FillFrom(flagNode);
+    }
+    else
+    {
+      std::cout << "No flagNode for bbfqa - abort run" << std::endl;
+      return Fun4AllReturnCodes::ABORTRUN;
+    }
   }
-  else
-  {
-    std::cout << "No parNode! Abort run." << std::endl;
-    return Fun4AllReturnCodes::ABORTRUN;
-  }
-  if(flagNode)
-  {
-    m_cutParams.FillFrom(flagNode);
-  }
-  else if(!m_doSim)
-  {
-    std::cout << "No flagNode for bbfqa - abort run" << std::endl;
-    return Fun4AllReturnCodes::ABORTRUN;
-  }
+  
   bool goodTrigger = false;
   if(!m_doSim){
   	TriggerAnalyzer *ta = new TriggerAnalyzer();
@@ -217,143 +347,114 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
     		{
      			std::cout << "VandyJetDSTSkimmer::process_event - Jet 10 GeV trigger not found, bad event" << std::endl;
     		}
-    	return Fun4AllReturnCodes::ABORTEVENT;
   	}
   }
   else goodTrigger = true; //trigger emulator not functioning on sim
-  if(vtxMap->empty())
+  
+  bool goodVtx = goodTrigger;
+  if(goodTrigger)
   {
-    if(Verbosity())  std::cout << "no vertex found" << std::endl;
-    return Fun4AllReturnCodes::ABORTEVENT;
-  }
-
-  std::vector<GlobalVertex*> vertices = vtxMap->get_gvtxs_with_type(vtxTypes);
-  if(vertices.empty() || !vertices.at(0))
-  {
-    if(Verbosity()) std::cout << "no MBD vertex found" << std::endl;
-    return Fun4AllReturnCodes::ABORTEVENT;
-  }
-
-  m_vtx_z = vertices.at(0)->get_z();
-
-  if (std::abs(m_vtx_z) > m_vtx_cut)
-  {
-  	 if(Verbosity())
-		 std::cout << "vertex not in range \n vertex is " <<m_vtx_z<<" cm off of nominal 0"  << std::endl;
-   return Fun4AllReturnCodes::ABORTEVENT;
-  }
-
-  if(m_doSim)
-  {
-    int truthVtxIndex = truthParticles->GetPrimaryVertexIndex();
-    if(truthParticles->GetPrimaryVtx(truthVtxIndex))
+    if(vtxMap->empty())
     {
-      m_vtx_z_truth = truthParticles->GetPrimaryVtx(truthVtxIndex)->get_z();
+      if(Verbosity())  std::cout << "no vertex found" << std::endl;
+      goodVtx = false;
+    }
+    if(goodVtx)
+    {
+      std::vector<GlobalVertex*> vertices = vtxMap->get_gvtxs_with_type(vtxTypes);
+      if(vertices.empty() || !vertices.at(0))
+      {
+        if(Verbosity()) std::cout << "no MBD vertex found" << std::endl;
+        goodVtx = false;
+      }
+      else
+      {
+        m_vtx_z = vertices.at(0)->get_z();
+        if (std::abs(m_vtx_z) > m_vtx_cut)
+        {
+          if(Verbosity()) std::cout << "vertex not in range \n vertex is " <<m_vtx_z<<" cm off of nominal 0"  << std::endl;
+          goodVtx = false;
+          m_vtx_z = -999;
+        }
+      }
     }
   }
 
-
-  //timing cut
- if(!m_doSim && !m_cutParams.get_int_param("passLeadtCut"))
+  bool goodTiming = goodVtx;
+  if(goodVtx && !m_doSim)
   {
-    if(Verbosity())
+    //timing cut
+    if(!m_cutParams.get_int_param("passLeadtCut"))
     {
-      std::cout << "VandyJetDSTSkimmer::process_event - leading jet time cut failed, bad event" << std::endl;
+      if(Verbosity())
+      {
+        std::cout << "VandyJetDSTSkimmer::process_event - leading jet time cut failed, bad event" << std::endl;
+      }
+      goodTiming = false;
     }
-    return Fun4AllReturnCodes::ABORTEVENT;
-  }
-  if(!m_doSim && !m_cutParams.get_int_param("passMbdDtCut"))
-  {
-    if(Verbosity())
+    if(!m_cutParams.get_int_param("passMbdDtCut"))
     {
-      std::cout << "VandyJetDSTSkimmer::process_event - MBD time cut failed, bad event" << std::endl;
+      if(Verbosity())
+      {
+        std::cout << "VandyJetDSTSkimmer::process_event - MBD time cut failed, bad event" << std::endl;
+      }
+      goodTiming = false;
     }
-    return Fun4AllReturnCodes::ABORTEVENT;
   }
 
   //Flag event as good only if one (or more) jets above pT threshold for each radius is found
   //If good jet is found at one R, entire event is flagged as good
   bool goodJet = false;
-  for(int i=3; i>=0; i--)
-  {
-    for(int j=0; j<(int)jets[i]->size(); j++)
-    {
-      Jet *jet = jets[i]->get_jet(j);
-      if(jet->get_pt() > jetR_pTMin[i])
-      {
-        goodJet = true;
-        break;
-      }
-    }
-    if(goodJet)
-    {
-      break;
-    }
-  }
-
-  bool goodTruthJet = false;
-  if(m_doSim)
+  if(goodTiming)
   {
     for(int i=3; i>=0; i--)
     {
-      for(int j=0; j<(int)truthJets[i]->size(); j++)
+      for(int j=0; j<(int)jets[i]->size(); j++)
       {
-        Jet *jet = truthJets[i]->get_jet(j);
-        if(jet->get_pt() > truthJetR_pTMin[i][sampleNumber])
+        Jet *jet = jets[i]->get_jet(j);
+        if(jet->get_pt() > jetR_pTMin[i])
         {
-          goodTruthJet = true;
+          goodJet = true;
           break;
         }
       }
-      if(goodTruthJet)
+      if(goodJet)
       {
         break;
       }
     }
-  }
-  else
-  {
-    goodTruthJet = true;
-  }
-
-  if(!m_doSim && !goodJet) nRemNoSim++;
-  if(m_doSim && !goodTruthJet && !goodJet) nRemSim++;
-
-  if((!m_doSim && !goodJet) || (m_doSim && !goodTruthJet && !goodJet))
-  {
-    if(Verbosity())
-    {
-      std::cout << "VandyJetDSTSkimmer::process_event - No jets of any R with pT>20 GeV, bad event" << std::endl;
-    }
-    return Fun4AllReturnCodes::ABORTEVENT;
   }
 
   //set event info
   m_eventInfo->set_z_vtx(m_vtx_z);
   m_eventInfo->set_ZDC_rate(m_ZDC_coincidence);
 
-  std::pair<float, float> dijet = isGoodDijet();
-  m_eventInfo->set_dijet_event((dijet.first >= 25.0 && dijet.second >= 8.4 ? true : false));
-  m_eventInfo->set_lead_pT(dijet.first);
-  m_eventInfo->set_sublead_pT(dijet.second);
-
-  if(m_doSim)
-  {  
-    m_eventInfo->set_z_vtx_truth(m_vtx_z_truth);
-    std::pair<float, float> dijetTruth = isGoodTruthDijet();
-    m_eventInfo->set_dijetTruth_event((dijetTruth.first >= 5.0 && dijetTruth.second >= 5.0 ? true : false));
-    m_eventInfo->set_leadTruth_pT(dijetTruth.first);
-    m_eventInfo->set_subleadTruth_pT(dijetTruth.second);
-  }
-  else
+  if(m_doSim && !goodJet)
   {
-    m_eventInfo->set_z_vtx_truth(-999);
-    m_eventInfo->set_dijetTruth_event(true);
-    m_eventInfo->set_leadTruth_pT(-999);
-    m_eventInfo->set_subleadTruth_pT(-999);
+    for(int r=0; r<4; r++)
+    {
+      m_eventInfo->set_dijet_event(r, false);
+      m_eventInfo->set_lead_pT(r, -999);
+      m_eventInfo->set_sublead_pT(r, -999);
+    }
+    T->Fill();
+
+    return Fun4AllReturnCodes::EVENT_OK;
   }
 
+  if(!m_doSim && !goodJet)
+  {
+    nRem++;
+    return Fun4AllReturnCodes::ABORTEVENT;
+  }
 
+  for(int r=0; r<4; r++)
+  {
+    std::pair<float, float> dijet = isGoodDijet(r);
+    m_eventInfo->set_dijet_event(r, (dijet.first >= jetR_pTMin[r] && dijet.second >= 5.0 ? true : false));
+    m_eventInfo->set_lead_pT(r, dijet.first);
+    m_eventInfo->set_sublead_pT(r, dijet.second);
+  }
 
   //store calorimeter towers in vector<Tower> object
   for(int calo = 0; calo < 4; calo++)
@@ -518,72 +619,6 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
     }
   }
 
-  //truth jets
-  if(m_doSim)
-  {
-    auto range = truthParticles->GetPrimaryParticleRange();
-    for(auto it=range.first; it!=range.second; ++it)
-    {
-      PHG4Particle* p = it->second;
-      if(!p) continue;
-      if(p->get_e() <= 0) continue;
-
-      Tower tmpTower;
-      tmpTower.set_px(p->get_px());
-      tmpTower.set_py(p->get_py());
-      tmpTower.set_pz(p->get_pz());
-      tmpTower.set_e(p->get_e());
-      tmpTower.set_calo(4);
-
-      m_truthParticles.push_back(tmpTower);
-      m_towerInfoTruth_map[std::make_pair(4, p->get_track_id())] = m_towerInfo.size() - 1;
-    }
-
-
-    // jet loop
-    for(int r=0; r<4; r++)
-    {
-      for(auto jet : *truthJets[r])
-      {
-        if (jet->get_pt() < m_minJetPt || std::abs(jet->get_eta()) > 1.1 - jetR[r])
-        {
-          continue;
-        }
-
-        std::vector<int> cons;
-        for(auto comp : jet->get_comp_vec())
-        {
-          int calo = -999;
-        
-          Jet::SRC source = comp.first;
-          int tower_id = static_cast<int>(comp.second);
-          if(source == Jet::SRC::HEPMC_IMPORT || source == Jet::SRC::PARTICLE || source == Jet::SRC::VOID)
-          {
-            calo = 4;
-          }
-        
-          if(calo == -999)
-          {
-            continue;
-          }
-          std::pair<int, int> lookup_key {calo, tower_id};
-          if(m_towerInfoTruth_map.find(lookup_key) != m_towerInfoTruth_map.end())
-          {
-            cons.push_back(m_towerInfoTruth_map[lookup_key]);
-          }
-        }
-        JetInfo tmpJet;
-        tmpJet.set_px(jet->get_px());
-        tmpJet.set_py(jet->get_py());
-        tmpJet.set_pz(jet->get_pz());
-        tmpJet.set_e(jet->get_e());
-        tmpJet.set_constituents(cons);
-        m_truthJetInfo[r].push_back(tmpJet);
-     }
-    }
-
-  }
-
   T->Fill();
 
   return Fun4AllReturnCodes::EVENT_OK;
@@ -592,10 +627,6 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
 //____________________________________________________________________________..
 int VandyJetDSTSkimmer::End(PHCompositeNode * /*topNode*/)
 {
-
-  std::cout << "Number of removed events no sim: " << nRemNoSim << std::endl;
-  std::cout << "Number of removed events sim: " << nRemSim << std::endl;
-  std::cout << "Number of removed events dT: " << nRem_dT << std::endl;
 
 
   T->Print();
@@ -610,8 +641,10 @@ int VandyJetDSTSkimmer::End(PHCompositeNode * /*topNode*/)
 double VandyJetDSTSkimmer::getTruthOHCALFrac()
 {
 
+
+
 //____________________________________________________________________________..
-std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet()
+std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
 {
   std::pair<float, float> pTs {-999, -999};
 
@@ -625,11 +658,10 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet()
     {
       std::cout << "VandyJetDSTSkimmer::process_event - delta t cut failed, bad event" << std::endl;
     }
-    nRem_dT++;
     return pTs;
   }
 
-  if(jets[2]->size() < 2)
+  if(jets[jetR_index]->size() < 2)
   {
     return pTs;
   }
@@ -638,9 +670,9 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet()
   Jet *subleadJet = nullptr;
   float lead_pT = 0.0;
   float sublead_pT = 0.0;
-  for(int i=0; i<(int)jets[2]->size(); i++)
+  for(int i=0; i<(int)jets[jetR_index]->size(); i++)
   {
-    Jet *j = jets[2]->get_jet(i);
+    Jet *j = jets[jetR_index]->get_jet(i);
     float pT = j->get_pt();
     if(pT > lead_pT)
     {
@@ -664,13 +696,13 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet()
     return pTs;
   }
 
-  if(lead_pT < 25.0 || sublead_pT < 8.4)
+  if(lead_pT < jetR_pTMin[jetR_index] || sublead_pT < 5.0)
   {
     return pTs;
   }
 
-  double posEtaCorr = correct_eta(0.7, 90.0);
-  double negEtaCorr = correct_eta(-0.7, 90.0);
+  double posEtaCorr = correct_eta(1.1-jetR[jetR_index], 90.0);
+  double negEtaCorr = correct_eta(-1.1+jetR[jetR_index], 90.0);
 
   double leadEta = leadJet->get_eta();
   double subleadEta = subleadJet->get_eta();
@@ -697,11 +729,11 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet()
 }
 
 //____________________________________________________________________________..
-std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet()
+std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet(int jetR_index)
 {
   std::pair<float, float> pTs {-999, -999};
 
-  if(truthJets[2]->size() < 2)
+  if(truthJets[jetR_index]->size() < 2)
   {
     return pTs;
   }
@@ -710,9 +742,9 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet()
   Jet *subleadJet = nullptr;
   float lead_pT = 0.0;
   float sublead_pT = 0.0;
-  for(int i=0; i<(int)truthJets[2]->size(); i++)
+  for(int i=0; i<(int)truthJets[jetR_index]->size(); i++)
   {
-    Jet *j = truthJets[2]->get_jet(i);
+    Jet *j = truthJets[jetR_index]->get_jet(i);
     float pT = j->get_pt();
     if(pT > lead_pT)
     {
@@ -741,7 +773,7 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet()
     return pTs;
   }
 
-  if(std::abs(leadJet->get_eta()) > 0.7 || std::abs(subleadJet->get_eta()) > 0.7)
+  if(std::abs(leadJet->get_eta()) > 1.1-jetR[jetR_index] || std::abs(subleadJet->get_eta()) > 1.1-jetR[jetR_index])
   {
     return pTs;
   }
