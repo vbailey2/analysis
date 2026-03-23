@@ -126,6 +126,7 @@ class VandyJetDSTSkimmer : public SubsysReco
     TowerInfoContainer *towerInfoContainers[4]{nullptr};
     RawTowerGeomContainer_Cylinderv1 *geoms[4]{nullptr};
     JetContainer *jets[4]{nullptr};
+    JetContainer *jetsUncalib[4]{nullptr};
     RawClusterContainer *clusters{nullptr};
 
     PHG4TruthInfoContainer *truthParticles;
