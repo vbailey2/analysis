@@ -638,9 +638,6 @@ int VandyJetDSTSkimmer::End(PHCompositeNode * /*topNode*/)
   return Fun4AllReturnCodes::EVENT_OK;
 }
 
-double VandyJetDSTSkimmer::getTruthOHCALFrac()
-{
-
 
 
 //____________________________________________________________________________..
@@ -726,6 +723,72 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
 
   return pTs;
 
+}
+double VandyJetDSTSkimmer::getHCalFracTruth(Jet* truthjet) 
+{
+	//select the particle ID and match to the detector
+	double hadronic_energy=0., electromagnetic_energy=0.;
+	float jet_phi=jet->get_phi(), jet_eta=jet->get_eta();
+	float i_e=0.;
+	try{
+		findNode::getClass<PHG4TruthInfoContainer>(topNode, "G4TruthInfo");
+	}
+	catch(std::exception& e){
+		std::cout<<"Could not find G4TruthInfo node"<<std::endl;
+		return 0.;
+	}
+	auto truth_particles_p=findNode::getClass<PHG4TruthInfoContainer>(topNode, "G4TruthInfo");
+	try{
+		truth_particles_p->GetMap();
+	}
+	catch(std::exception& e){
+		std::cout<<"Could not find particle map" <<std::endl;
+		return 0.;
+	}
+	std::map<int, PHG4Particle*> truth_particles;
+	for(const auto& a:truth_particles_p->GetMap())
+	       	truth_particles[a.first]=a.second;
+	for(auto& iter:jet->get_comp_vec()){
+		Jet::SRC source=iter.first;
+		if(source != Jet::SRC::PARTICLE && source != Jet::SRC::CHARGED_PARTICLE && source != Jet::SRC::HEPMC_IMPORT){
+			//don't have a source particle so skip it
+			continue;
+		}
+		else{
+			unsigned int id=iter.second;
+			if(truth_particles.find(id) == truth_particles.end()){
+				continue;
+			}
+			else{
+				PHG4Particle* particle = truth_particles.at(id);
+				int pid=particle->get_pid();
+				if(abs(pid) == 11 || pid== 22){ 
+					//electrons, positrons and photons get put in the emcal
+					electromagnetic_energy+=particle->get_e();
+					float particle_phi=std::atan2(particle->get_py(), particle->get_px());
+					float particle_eta=std::atanh(particle->get_pz()/particle->get_e());
+				}
+				else if(abs(pid) > 11 && abs(pid) <= 18){
+					//don't count neutrinos, muons, tau
+					hadronic_energy+=particle->get_e();
+					float particle_phi=std::atan2(particle->get_py(), particle->get_px());
+					float particle_eta=std::atanh(particle->get_pz()/particle->get_e());
+				}
+			}
+		}
+	}
+	//assume that the hcal energy split is consistent with the whole detector energy split 
+	float ohcal_ratio=hadronic_energy/(hadronic_energy+electromagnetic_energy);
+	return ohcal_ratio;
+	//float emcal_ratio=electromagnetic_energy/(hadronic_energy+electromagnetic_energy);
+	
+}
+double VandyJetDSTSkimmer::getDeltatTruth(double lead_ratio, double subl_ratio)
+{
+	double lead_t = OHCALrat2t(lead_ratio);
+	double subl_t = OHCALrat2t(subl_ratio);
+	double delta_t = lead_t - subl_t;
+	return delta_t; //cloest approximation using the TF1 report 	
 }
 
 //____________________________________________________________________________..

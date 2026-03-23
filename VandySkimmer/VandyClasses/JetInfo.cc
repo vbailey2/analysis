@@ -9,7 +9,8 @@ void JetInfo::CopyTo(JetInfo* jet)
     jet->set_pz(Pz);
     jet->set_e(E);
     jet->set_pt(Pt);
-    jet->set_emCaloFrac(EMCaloFrac);
+    jet->set_pt_uncalib(Pt_uncalib);
+    jet->set_hCaloFrac(HCaloFrac);
     std::vector<int> constit;
     for(auto cons : constituents)
     {

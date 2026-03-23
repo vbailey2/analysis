@@ -153,6 +153,13 @@ class VandyJetDSTSkimmer : public SubsysReco
     std::pair<float, float> isGoodTruthDijet(int jetR_index);
     float correct_eta(float eta, float r);
     fastjet::PseudoJet get_PseudoJet(double eta, double phi, double E);
+    double getHCalFracTruth(Jet* truthjet);
+    double getDeltatTruth(double lead_ratio, double subl_ratio);
+    double OHCALrat2t(double ohcal_ratio){
+	    double t = -1.059;
+	    t += -(2.015+0.784*ohcal_ratio)*ohcal_ratio;
+	    return t;
+    }
 
     PHParameters m_cutParams{"TimingCutParams"}; //variable name is arbitrary
 
