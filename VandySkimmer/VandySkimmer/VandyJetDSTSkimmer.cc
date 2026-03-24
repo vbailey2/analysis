@@ -294,9 +294,9 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
         tmpJet.set_py(jet->get_py());
         tmpJet.set_pz(jet->get_pz());
         tmpJet.set_e(jet->get_e());
-	tmpJet.set_pt(jet->get_pt());
-	tmpJet.set_ptUncalib(jet->get_pt());
-	tmpJet.set_hCaloFrac(getHCalFracTruth(jet));
+        tmpJet.set_pt(jet->get_pt());
+	      tmpJet.set_ptUncalib(jet->get_pt());
+	      tmpJet.set_hCaloFrac(getHCalFracTruth(jet));
         tmpJet.set_constituents(cons);
         m_truthJetInfo[r].push_back(tmpJet);
      }
@@ -650,6 +650,7 @@ int VandyJetDSTSkimmer::End(PHCompositeNode * /*topNode*/)
   
   return Fun4AllReturnCodes::EVENT_OK;
 }
+
 
 
 
