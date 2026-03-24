@@ -151,10 +151,10 @@ class VandyJetDSTSkimmer : public SubsysReco
     TTree *T{nullptr};
 
     std::pair<float, float> isGoodDijet(int jetR_index);
-    std::pair<float, float> isGoodTruthDijet(int jetR_index);
+    std::pair<float, float> isGoodTruthDijet(int jetR_index, PHCompositeNode* topNode);
     float correct_eta(float eta, float r);
     fastjet::PseudoJet get_PseudoJet(double eta, double phi, double E);
-    double getHCalFracTruth(Jet* truthjet);
+    double getHCalFracTruth(Jet* jet, PHCompositeNode* topNode);
     double getDeltatTruth(double lead_ratio, double subl_ratio);
     double OHCALrat2t(double ohcal_ratio){
 	    double t = -1.059;
