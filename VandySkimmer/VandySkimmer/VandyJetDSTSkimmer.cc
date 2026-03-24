@@ -294,6 +294,9 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
         tmpJet.set_py(jet->get_py());
         tmpJet.set_pz(jet->get_pz());
         tmpJet.set_e(jet->get_e());
+	tmpJet.set_pt(jet->get_pt());
+	tmpJet.set_ptUncalib(jet->get_pt());
+	tmpJet.set_hCaloFrac(getHCalFracTruth(jet));
         tmpJet.set_constituents(cons);
         m_truthJetInfo[r].push_back(tmpJet);
      }
@@ -561,7 +564,8 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
   // jet loop
   for(int r=0; r<4; r++)
   {
-    auto jetUncalib = jetsUncalib[r]->begin();
+    Jet* jetUncalib;
+    if (m_doCalib) jetUncalib = jetsUncalib[r]->begin();
     for(auto jet : *jets[r])
     {
       double posEta = 1.1 - jetR[r];
@@ -619,8 +623,10 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       tmpJet.set_pz(jet->get_pz());
       tmpJet.set_e(jet->get_e());
       tmpJet.set_pt(jet->get_pt()); 
-      if(m_doCalib) tmpJet.set_ptUncalib(jetUncalib->get_pt()); 
-      tmpJet.set_hCaloFrac(0); //need to look at the TF doc to do this properly 
+      if(m_doCalib) tmpJet.set_ptUncalib(jetUncalib->get_pt());
+      else tmpJet.set_ptUncalib(jet->get_pt()); 
+      tmpJet.set_hCaloFrac(0); 	//need to look at the TF doc to do this properly 
+				//is it a jet by jet quanity or just an event quantity?
       tmpJet.set_constituents(cons);
       m_jetInfo[r].push_back(tmpJet);
     }
