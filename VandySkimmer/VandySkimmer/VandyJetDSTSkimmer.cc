@@ -662,8 +662,8 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
   std::pair<float, float> pTs {-999, -999};
 
   m_eventInfo->set_dijetDeltatPass(jetR_index, (bool) m_cutParams.get_int_param("passDeltatCut"));
-  double DeltaT = m_cutParams.get_double_param("maxJett");
-  DeltaT += -1.* m_cutParams.get_double_param("subJett");
+  float DeltaT = (float) m_cutParams.get_double_param("maxJett");
+  DeltaT += -1.* (float) m_cutParams.get_double_param("subJett");
   m_eventInfo->set_dijetDeltat(jetR_index, DeltaT);
   if(!m_doSim && !m_cutParams.get_int_param("passDeltatCut"))
   {
@@ -717,8 +717,8 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
   double posEtaCorr = correct_eta(1.1-jetR[jetR_index], 90.0);
   double negEtaCorr = correct_eta(-1.1+jetR[jetR_index], 90.0);
 
-  double leadEta = leadJet->get_eta();
-  double subleadEta = subleadJet->get_eta();
+  float leadEta = leadJet->get_eta();
+  float subleadEta = subleadJet->get_eta();
 
   if(leadEta > posEtaCorr || leadEta < negEtaCorr || subleadEta > posEtaCorr || subleadEta < negEtaCorr)
   {
@@ -740,10 +740,10 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
   return pTs;
 
 }
-double VandyJetDSTSkimmer::getHCalFracTruth(Jet* jet, PHCompositeNode *topNode) 
+float VandyJetDSTSkimmer::getHCalFracTruth(Jet* jet, PHCompositeNode *topNode) 
 {
 	//select the particle ID and match to the detector
-	double hadronic_energy=0., electromagnetic_energy=0.;
+	float hadronic_energy=0., electromagnetic_energy=0.;
 //	float jet_phi=jet->get_phi(), jet_eta=jet->get_eta();
 //	float i_e=0.;
 	try{
@@ -799,11 +799,11 @@ double VandyJetDSTSkimmer::getHCalFracTruth(Jet* jet, PHCompositeNode *topNode)
 	//float emcal_ratio=electromagnetic_energy/(hadronic_energy+electromagnetic_energy);
 	
 }
-double VandyJetDSTSkimmer::getDeltatTruth(double lead_ratio, double subl_ratio)
+float VandyJetDSTSkimmer::getDeltatTruth(float lead_ratio, float subl_ratio)
 {
-	double lead_t = OHCALrat2t(lead_ratio);
-	double subl_t = OHCALrat2t(subl_ratio);
-	double delta_t = lead_t - subl_t;
+	float lead_t = OHCALrat2t(lead_ratio);
+	float subl_t = OHCALrat2t(subl_ratio);
+	float delta_t = lead_t - subl_t;
 	return delta_t; //cloest approximation using the TF1 report 	
 }
 
@@ -865,7 +865,7 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet(int jetR_index, PHC
   {
     return pTs;
   }
-  double deltaT = getHCalFracTruth(leadJet, topNode) - getHCalFracTruth(subleadJet, topNode);
+  float deltaT = getHCalFracTruth(leadJet, topNode) - getHCalFracTruth(subleadJet, topNode);
   m_eventInfo->set_dijetDeltatTruth(jetR_index, deltaT);
   m_eventInfo->set_dijetDeltatTruth(jetR_index, std::abs(deltaT) < 5 ? true : false ); 
   pTs.first = lead_pT;

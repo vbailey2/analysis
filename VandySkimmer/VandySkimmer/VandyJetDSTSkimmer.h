@@ -115,7 +115,7 @@ class VandyJetDSTSkimmer : public SubsysReco
     int sampleNumber{-999};
 
     int m_runnumber{0};
-    double m_ZDC_coincidence{0.0};
+    float m_ZDC_coincidence{0.0};
 
     int nRem{0};
 
@@ -154,10 +154,10 @@ class VandyJetDSTSkimmer : public SubsysReco
     std::pair<float, float> isGoodTruthDijet(int jetR_index, PHCompositeNode* topNode);
     float correct_eta(float eta, float r);
     fastjet::PseudoJet get_PseudoJet(double eta, double phi, double E);
-    double getHCalFracTruth(Jet* jet, PHCompositeNode* topNode);
-    double getDeltatTruth(double lead_ratio, double subl_ratio);
-    double OHCALrat2t(double ohcal_ratio){
-	    double t = -1.059;
+    float getHCalFracTruth(Jet* jet, PHCompositeNode* topNode);
+    float getDeltatTruth(float lead_ratio, float subl_ratio);
+    float OHCALrat2t(float ohcal_ratio){
+	    float t = -1.059;
 	    t += -(2.015+0.784*ohcal_ratio)*ohcal_ratio;
 	    return t;
     }
