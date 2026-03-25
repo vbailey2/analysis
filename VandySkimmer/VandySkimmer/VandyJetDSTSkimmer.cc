@@ -189,6 +189,29 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
   }
   m_topoclusters.clear();
 
+  if(vtxMap->empty())
+  {
+    if(Verbosity())  std::cout << "no vertex found" << std::endl;
+    return Fun4AllReturnCodes::ABORTEVENT;
+  }
+  std::vector<GlobalVertex*> vertices = vtxMap->get_gvtxs_with_type(vtxTypes);
+  if(vertices.empty() || !vertices.at(0))
+  {
+    if(Verbosity()) std::cout << "no MBD vertex found" << std::endl;
+    return Fun4AllReturnCodes::ABORTEVENT;
+  }
+  m_vtx_z = vertices.at(0)->get_z();
+  if (std::abs(m_vtx_z) > m_vtx_cut)
+  {
+    if(Verbosity()) std::cout << "reco vertex not in range \n vertex is " <<m_vtx_z<<" cm off of nominal 0"  << std::endl;
+    return Fun4AllReturnCodes::ABORTEVENT;
+  }
+
+  //set event info
+  m_eventInfo->set_z_vtx(m_vtx_z);
+  m_eventInfo->set_ZDC_rate(m_ZDC_coincidence);
+
+
   if(m_doSim)
   {
     //get leading truth pT and skip events where it is outside the range for each sample for ALL jet R
@@ -364,37 +387,8 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
   }
   else goodTrigger = true; //trigger emulator not functioning on sim
   
-  bool goodVtx = goodTrigger;
-  if(goodTrigger)
-  {
-    if(vtxMap->empty())
-    {
-      if(Verbosity())  std::cout << "no vertex found" << std::endl;
-      goodVtx = false;
-    }
-    if(goodVtx)
-    {
-      std::vector<GlobalVertex*> vertices = vtxMap->get_gvtxs_with_type(vtxTypes);
-      if(vertices.empty() || !vertices.at(0))
-      {
-        if(Verbosity()) std::cout << "no MBD vertex found" << std::endl;
-        goodVtx = false;
-      }
-      else
-      {
-        m_vtx_z = vertices.at(0)->get_z();
-        if (std::abs(m_vtx_z) > m_vtx_cut)
-        {
-          if(Verbosity()) std::cout << "vertex not in range \n vertex is " <<m_vtx_z<<" cm off of nominal 0"  << std::endl;
-          goodVtx = false;
-          m_vtx_z = -999;
-        }
-      }
-    }
-  }
-
-  bool goodTiming = goodVtx;
-  if(goodVtx && !m_doSim)
+  bool goodTiming = goodTrigger;
+  if(goodTrigger && !m_doSim)
   {
     //timing cut
     if(!m_cutParams.get_int_param("passLeadtCut"))
@@ -437,10 +431,6 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       }
     }
   }
-
-  //set event info
-  m_eventInfo->set_z_vtx(m_vtx_z);
-  m_eventInfo->set_ZDC_rate(m_ZDC_coincidence);
 
   if(m_doSim && !goodJet)
   {
