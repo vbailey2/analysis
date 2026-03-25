@@ -36,15 +36,12 @@ class EventInfo {
 
         float get_subleadTruth_pT(int jetR_index) {return subleadTruth_pT[jetR_index];};
         void set_subleadTruth_pT(int jetR_index, float pT){ subleadTruth_pT[jetR_index] = pT; };
-    
-        float get_dijetDeltat(int jetR_index) { return dijetDeltat[jetR_index]; };
-        void set_dijetDeltat(int jetR_index, float dijet){ dijetDeltat[jetR_index] = dijet; };
-       
+          
 	float get_dijetDeltatTruth(int jetR_index) { return dijetDeltatTruth[jetR_index]; };
         void set_dijetDeltatTruth(int jetR_index, float dijet){ dijetDeltatTruth[jetR_index] = dijet; };
 
-        bool is_dijetDeltatPass(int jetR_index) { return dijetDeltatPass[jetR_index]; };
-        void set_dijetDeltatPass(int jetR_index, bool dijet){ dijetDeltatPass[jetR_index] = dijet; };
+        bool is_dijetDeltatPass() { return dijetDeltatPass; };
+        void set_dijetDeltatPass(bool dijet){ dijetDeltatPass = dijet; };
        
 	bool is_dijetDeltatTruthPass(int jetR_index) { return dijetDeltatTruthPass[jetR_index]; };
         void set_dijetDeltatTruthPass(int jetR_index, bool dijet){ dijetDeltatTruthPass[jetR_index] = dijet; };
@@ -55,6 +52,21 @@ class EventInfo {
 	float get_dijetDeltaPhiTruth(int jetR_index) { return dijetDeltaPhiTruth[jetR_index]; };
         void set_dijetDeltaPhiTruth(int jetR_index, float dijet){ dijetDeltaPhiTruth[jetR_index] = dijet; };
 
+        float get_leadJetTime() { return leadJetTime; };
+        void set_leadJetTime(float time){ leadJetTime = time; };
+
+        float get_subJetTime() { return subJetTime; };
+        void set_subJetTime(float time){ subJetTime = time; };
+
+        float get_MBDTime() { return MBDTime; };
+        void set_MBDTime(float time){ MBDTime = time; };
+
+        bool get_leadJetTimePass() { return leadJetTimePass; };
+        void set_leadJetTimePass(bool timePass){ leadJetTimePass = timePass; };
+
+        bool get_leadJetMBDDeltatPass() { return leadJetMBDDeltatPass; };
+        void set_leadJetMBDDeltatPass(bool timePass){ leadJetMBDDeltatPass = timePass; };
+
     
     private:
         float 	z_vtx{0.0};
@@ -64,10 +76,14 @@ class EventInfo {
 	bool 	dijet_event[4] = {false, false, false, false};
         bool 	dijetTruth_event[4] = {false, false, false, false};
 	
-	float	dijetDeltat[4] {-999, -999, -999, -999};
+        float   leadJetTime = -999;
+        float   subJetTime = -999;
+        float   MBDTime = -999;
 	float 	dijetDeltatTruth[4] {-999, -999, -999, -999};
-	bool	dijetDeltatPass[4] = {false, false, false, false};
-	bool 	dijetDeltatTruthPass[4] = {false, false, false, false};
+	bool	leadJetTimePass = false;
+	bool	leadJetMBDDeltatPass = false;
+	bool	dijetDeltatPass = false;
+	bool 	dijetDeltatTruthPass[4] {false, false, false, false};
 
 	float 	dijetDeltaPhi[4] {-999, -999, -999, -999};
 	float 	dijetDeltaPhiTruth[4] {-999, -999, -999, -999};
