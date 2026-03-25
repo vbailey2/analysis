@@ -294,9 +294,9 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
         tmpJet.set_py(jet->get_py());
         tmpJet.set_pz(jet->get_pz());
         tmpJet.set_e(jet->get_e());
-	tmpJet.set_pt(jet->get_pt());
-	tmpJet.set_pt_uncalib(jet->get_pt());
-	tmpJet.set_hCaloFrac(getHCalFracTruth(jet, topNode));
+	      tmpJet.set_pt(jet->get_pt());
+        tmpJet.set_pt_uncalib(jet->get_pt());
+        tmpJet.set_hCaloFrac(getHCalFracTruth(jet, topNode));
         tmpJet.set_constituents(cons);
         m_truthJetInfo[r].push_back(tmpJet);
      }
@@ -338,6 +338,14 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       std::cout << "No flagNode for bbfqa - abort run" << std::endl;
       return Fun4AllReturnCodes::ABORTRUN;
     }
+
+    m_eventInfo->set_leadJetTime(m_cutParams.get_double_param("maxJett"));
+    m_eventInfo->set_subJetTime(m_cutParams.get_double_param("subJett"));
+    m_eventInfo->set_MBDTime(m_cutParams.get_double_param("mbd_time"));
+
+    m_eventInfo->set_leadJetTimePass((bool) m_cutParams.get_int_param("passLeadtCut"));
+    m_eventInfo->set_leadJetMBDDeltatPass((bool) m_cutParams.get_int_param("passMbdDtCut"));
+    m_eventInfo->set_dijetDeltatPass((bool) m_cutParams.get_int_param("passDeltatCut"));
   }
   
   bool goodTrigger = false;
@@ -661,10 +669,6 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
 {
   std::pair<float, float> pTs {-999, -999};
 
-  m_eventInfo->set_dijetDeltatPass(jetR_index, (bool) m_cutParams.get_int_param("passDeltatCut"));
-  float DeltaT = (float) m_cutParams.get_double_param("maxJett");
-  DeltaT += -1.* (float) m_cutParams.get_double_param("subJett");
-  m_eventInfo->set_dijetDeltat(jetR_index, DeltaT);
   if(!m_doSim && !m_cutParams.get_int_param("passDeltatCut"))
   {
     if(Verbosity())
