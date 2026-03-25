@@ -70,6 +70,8 @@ int VandyJetDSTSkimmer::InitRun(PHCompositeNode *topNode)
   for(int i=0; i<4; i++)
   {
     jets[i] = findNode::getClass<JetContainer>(topNode, std::format("AntiKt_r{}{}",jetRStr[i],(m_doCalib ? "_calib" : "")).c_str());
+    if(m_doCalib) jetsUncalib[i] = findNode::getClass<JetContainer>(topNode, std::format("AntiKt_r{}",jetRStr[i]).c_str());
+
     if (!jets[i])
     {
       std::cout << "VandyJetDSTSkimmer::Init - Error - Can't find Jet Node " << std::format("AntiKt_r{}{}",jetRStr[i],(m_doCalib ? "_calib" : "")).c_str() << " therefore no selection can be made" << std::endl;
@@ -224,7 +226,7 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
     {
       if(goodTruthLeadJet[r])
       {
-        std::pair<float,float> dijetTruth = isGoodTruthDijet(r);
+        std::pair<float,float> dijetTruth = isGoodTruthDijet(r, topNode);
         m_eventInfo->set_dijetTruth_event(r, (dijetTruth.first >= 5.0 && dijetTruth.second >= 5.0 ? true : false));
         m_eventInfo->set_leadTruth_pT(r, dijetTruth.first);
         m_eventInfo->set_subleadTruth_pT(r, dijetTruth.second);
@@ -292,6 +294,9 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
         tmpJet.set_py(jet->get_py());
         tmpJet.set_pz(jet->get_pz());
         tmpJet.set_e(jet->get_e());
+	tmpJet.set_pt(jet->get_pt());
+	tmpJet.set_pt_uncalib(jet->get_pt());
+	tmpJet.set_hCaloFrac(getHCalFracTruth(jet, topNode));
         tmpJet.set_constituents(cons);
         m_truthJetInfo[r].push_back(tmpJet);
      }
@@ -559,12 +564,16 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
   // jet loop
   for(int r=0; r<4; r++)
   {
+    Jet* jetUncalib;
+    Jet::IterJetTCA jetUncalibIter {NULL};
+    if (m_doCalib) jetUncalibIter = jetsUncalib[r]->begin();
     for(auto jet : *jets[r])
     {
       double posEta = 1.1 - jetR[r];
       double posEtaCorr = correct_eta(posEta, 90.0);
       double negEta = -1.1 + jetR[r];
       double negEtaCorr = correct_eta(negEta, 90.0);
+      jetUncalib = *jetUncalibIter;
 
       if (jet->get_pt() < m_minJetPt || jet->get_eta() > posEtaCorr || jet->get_eta() < negEtaCorr)
       {
@@ -598,7 +607,8 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
         
         if(calo == -999)
         {
-          continue;
+	  if(m_doCalib) ++jetUncalibIter;
+	  continue;
         }
 
         //std::cout << "calo: " << calo << "   calo from id: " << unique_id / 10000 << "   channel: " << unique_id - (unique_id / 10000) << std::endl;
@@ -614,6 +624,11 @@ int VandyJetDSTSkimmer::process_event(PHCompositeNode *topNode)
       tmpJet.set_py(jet->get_py());
       tmpJet.set_pz(jet->get_pz());
       tmpJet.set_e(jet->get_e());
+      tmpJet.set_pt(jet->get_pt()); 
+      if(m_doCalib) tmpJet.set_pt_uncalib(jetUncalib->get_pt());
+      else tmpJet.set_pt_uncalib(jet->get_pt()); 
+      tmpJet.set_hCaloFrac(0); 	//need to look at the TF doc to do this properly 
+				//is it a jet by jet quanity or just an event quantity?
       tmpJet.set_constituents(cons);
       m_jetInfo[r].push_back(tmpJet);
     }
@@ -646,6 +661,10 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
 {
   std::pair<float, float> pTs {-999, -999};
 
+  m_eventInfo->set_dijetDeltatPass(jetR_index, (bool) m_cutParams.get_int_param("passDeltatCut"));
+  float DeltaT = (float) m_cutParams.get_double_param("maxJett");
+  DeltaT += -1.* (float) m_cutParams.get_double_param("subJett");
+  m_eventInfo->set_dijetDeltat(jetR_index, DeltaT);
   if(!m_doSim && !m_cutParams.get_int_param("passDeltatCut"))
   {
     if(Verbosity())
@@ -698,8 +717,8 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
   double posEtaCorr = correct_eta(1.1-jetR[jetR_index], 90.0);
   double negEtaCorr = correct_eta(-1.1+jetR[jetR_index], 90.0);
 
-  double leadEta = leadJet->get_eta();
-  double subleadEta = subleadJet->get_eta();
+  float leadEta = leadJet->get_eta();
+  float subleadEta = subleadJet->get_eta();
 
   if(leadEta > posEtaCorr || leadEta < negEtaCorr || subleadEta > posEtaCorr || subleadEta < negEtaCorr)
   {
@@ -709,6 +728,7 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
   float dPhi = subleadJet->get_phi() - leadJet->get_phi();
   if(dPhi > M_PI) dPhi -= 2*M_PI;
   if(dPhi < -M_PI) dPhi += 2*M_PI;
+  m_eventInfo->set_dijetDeltaPhi(jetR_index, dPhi);
   if(std::abs(dPhi) < 0.75*M_PI)
   {
     return pTs;
@@ -720,9 +740,75 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodDijet(int jetR_index)
   return pTs;
 
 }
+float VandyJetDSTSkimmer::getHCalFracTruth(Jet* jet, PHCompositeNode *topNode) 
+{
+	//select the particle ID and match to the detector
+	float hadronic_energy=0., electromagnetic_energy=0.;
+//	float jet_phi=jet->get_phi(), jet_eta=jet->get_eta();
+//	float i_e=0.;
+	try{
+		findNode::getClass<PHG4TruthInfoContainer>(topNode, "G4TruthInfo");
+	}
+	catch(std::exception& e){
+		std::cout<<"Could not find G4TruthInfo node"<<std::endl;
+		return 0.;
+	}
+	auto truth_particles_p=findNode::getClass<PHG4TruthInfoContainer>(topNode, "G4TruthInfo");
+	try{
+		truth_particles_p->GetMap();
+	}
+	catch(std::exception& e){
+		std::cout<<"Could not find particle map" <<std::endl;
+		return 0.;
+	}
+	std::map<int, PHG4Particle*> truth_particles;
+	for(const auto& a:truth_particles_p->GetMap())
+	       	truth_particles[a.first]=a.second;
+	for(auto& iter:jet->get_comp_vec()){
+		Jet::SRC source=iter.first;
+		if(source != Jet::SRC::PARTICLE && source != Jet::SRC::CHARGED_PARTICLE && source != Jet::SRC::HEPMC_IMPORT){
+			//don't have a source particle so skip it
+			continue;
+		}
+		else{
+			unsigned int id=iter.second;
+			if(truth_particles.find(id) == truth_particles.end()){
+				continue;
+			}
+			else{
+				PHG4Particle* particle = truth_particles.at(id);
+				int pid=particle->get_pid();
+				if(abs(pid) == 11 || pid== 22){ 
+					//electrons, positrons and photons get put in the emcal
+					electromagnetic_energy+=particle->get_e();
+//					float particle_phi=std::atan2(particle->get_py(), particle->get_px());
+//					float particle_eta=std::atanh(particle->get_pz()/particle->get_e());
+				}
+				else if(abs(pid) > 11 && abs(pid) <= 18){
+					//don't count neutrinos, muons, tau
+					hadronic_energy+=particle->get_e();
+//					float particle_phi=std::atan2(particle->get_py(), particle->get_px());
+//					float particle_eta=std::atanh(particle->get_pz()/particle->get_e());
+				}
+			}
+		}
+	}
+	//assume that the hcal energy split is consistent with the whole detector energy split 
+	float ohcal_ratio=hadronic_energy/(hadronic_energy+electromagnetic_energy);
+	return ohcal_ratio;
+	//float emcal_ratio=electromagnetic_energy/(hadronic_energy+electromagnetic_energy);
+	
+}
+float VandyJetDSTSkimmer::getDeltatTruth(float lead_ratio, float subl_ratio)
+{
+	float lead_t = OHCALrat2t(lead_ratio);
+	float subl_t = OHCALrat2t(subl_ratio);
+	float delta_t = lead_t - subl_t;
+	return delta_t; //cloest approximation using the TF1 report 	
+}
 
 //____________________________________________________________________________..
-std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet(int jetR_index)
+std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet(int jetR_index, PHCompositeNode *topNode)
 {
   std::pair<float, float> pTs {-999, -999};
 
@@ -774,11 +860,14 @@ std::pair<float, float> VandyJetDSTSkimmer::isGoodTruthDijet(int jetR_index)
   float dPhi = subleadJet->get_phi() - leadJet->get_phi();
   if(dPhi > M_PI) dPhi -= 2*M_PI;
   if(dPhi < -M_PI) dPhi += 2*M_PI;
+  m_eventInfo->set_dijetDeltaPhiTruth(jetR_index, dPhi);
   if(std::abs(dPhi) < 0.75*M_PI)
   {
     return pTs;
   }
-
+  float deltaT = getHCalFracTruth(leadJet, topNode) - getHCalFracTruth(subleadJet, topNode);
+  m_eventInfo->set_dijetDeltatTruth(jetR_index, deltaT);
+  m_eventInfo->set_dijetDeltatTruth(jetR_index, std::abs(deltaT) < 5 ? true : false ); 
   pTs.first = lead_pT;
   pTs.second = sublead_pT;
 

@@ -115,7 +115,7 @@ class VandyJetDSTSkimmer : public SubsysReco
     int sampleNumber{-999};
 
     int m_runnumber{0};
-    double m_ZDC_coincidence{0.0};
+    float m_ZDC_coincidence{0.0};
 
     int nRem{0};
 
@@ -126,6 +126,7 @@ class VandyJetDSTSkimmer : public SubsysReco
     TowerInfoContainer *towerInfoContainers[4]{nullptr};
     RawTowerGeomContainer_Cylinderv1 *geoms[4]{nullptr};
     JetContainer *jets[4]{nullptr};
+    JetContainer *jetsUncalib[4]{nullptr};
     RawClusterContainer *clusters{nullptr};
 
     PHG4TruthInfoContainer *truthParticles;
@@ -150,9 +151,16 @@ class VandyJetDSTSkimmer : public SubsysReco
     TTree *T{nullptr};
 
     std::pair<float, float> isGoodDijet(int jetR_index);
-    std::pair<float, float> isGoodTruthDijet(int jetR_index);
+    std::pair<float, float> isGoodTruthDijet(int jetR_index, PHCompositeNode* topNode);
     float correct_eta(float eta, float r);
     fastjet::PseudoJet get_PseudoJet(double eta, double phi, double E);
+    float getHCalFracTruth(Jet* jet, PHCompositeNode* topNode);
+    float getDeltatTruth(float lead_ratio, float subl_ratio);
+    float OHCALrat2t(float ohcal_ratio){
+	    float t = -1.059;
+	    t += -(2.015+0.784*ohcal_ratio)*ohcal_ratio;
+	    return t;
+    }
 
     PHParameters m_cutParams{"TimingCutParams"}; //variable name is arbitrary
 
